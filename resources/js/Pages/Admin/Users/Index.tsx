@@ -85,6 +85,12 @@ export default function Index({ users, filters }: Props) {
                 user.role !== 'admin' ? (
                     <div className="flex space-x-3">
                         <Link
+                            href={route('admin.users.show', user.id)}
+                            className="text-gray-600 hover:text-gray-900"
+                        >
+                            View
+                        </Link>
+                        <Link
                             href={route('admin.users.edit', user.id)}
                             className="text-emerald-600 hover:text-emerald-900"
                         >

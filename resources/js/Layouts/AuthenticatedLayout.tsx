@@ -26,6 +26,18 @@ export default function Authenticated({
 
             {user.roles?.includes('admin') && (<>
                 <SidebarLink
+                    href={route('admin.services.index')}
+                    active={route().current('admin.services.*')}
+                    icon={
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="h-5 w-5">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M11.42 15.17l-5.384 3.18.86-5.01L2.67 9.18l5.03-.73L10.04 3.6l2.34 4.85 5.03.73-3.64 3.55.86 5.01-5.38-3.18h.17zM12 2.25c5.385 0 9.75 4.365 9.75 9.75s-4.365 9.75-9.75 9.75S2.25 17.385 2.25 12 6.615 2.25 12 2.25z" />
+                        </svg>
+                    }
+                >
+                    Services
+                </SidebarLink>
+
+                <SidebarLink
                     href={route('admin.users.index')}
                     active={route().current('admin.users.*')}
                     icon={
@@ -60,43 +72,8 @@ export default function Authenticated({
                 >
                     Permissions
                 </SidebarLink>
-
-                <SidebarLink
-                    href={route('admin.services.index')}
-                    active={route().current('admin.services.*')}
-                    icon={
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="h-5 w-5">
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M11.42 15.17l-5.384 3.18.86-5.01L2.67 9.18l5.03-.73L10.04 3.6l2.34 4.85 5.03.73-3.64 3.55.86 5.01-5.38-3.18h.17zM12 2.25c5.385 0 9.75 4.365 9.75 9.75s-4.365 9.75-9.75 9.75S2.25 17.385 2.25 12 6.615 2.25 12 2.25z" />
-                        </svg>
-                    }
-                >
-                    Services
-                </SidebarLink>
             </>)}
 
-            <SidebarLink
-                href={route('services.index')}
-                active={route().current('services.*')}
-                icon={
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="h-5 w-5">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 12h16.5m-16.5 3.75h16.5M3.75 19.5h16.5M5.625 4.5h12.75a1.875 1.875 0 010 3.75H5.625a1.875 1.875 0 010-3.75z" />
-                    </svg>
-                }
-            >
-                Services
-            </SidebarLink>
-
-            <SidebarLink
-                href={route('services.my-submissions')}
-                active={route().current('services.my-submissions')}
-                icon={
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="h-5 w-5">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
-                    </svg>
-                }
-            >
-                My Submissions
-            </SidebarLink>
         </nav>
     );
 

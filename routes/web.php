@@ -5,7 +5,6 @@ use App\Http\Controllers\Admin\RoleController;
 use App\Http\Controllers\Admin\ServiceController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\ProfileController;
-use App\Http\Controllers\ServiceSubmissionController;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -31,19 +30,12 @@ Route::middleware('auth')->group(function () {
 
 // Admin routes
 Route::middleware(['auth', 'verified', 'role:admin'])->prefix('admin')->name('admin.')->group(function () {
-    Route::resource('users', UserController::class)->except(['show']);
+    Route::resource('users', UserController::class);
     Route::resource('roles', RoleController::class)->except(['show']);
     Route::resource('permissions', PermissionController::class)->only(['index', 'create', 'store', 'destroy']);
     Route::resource('services', ServiceController::class)->except(['show']);
     Route::get('services/{service}/submissions', [ServiceController::class, 'submissions'])->name('services.submissions');
     Route::get('services/{service}/submissions/{submission}', [ServiceController::class, 'showSubmission'])->name('services.submissions.show');
-});
-
-Route::middleware(['auth', 'verified'])->group(function () {
-    Route::get('services', [ServiceSubmissionController::class, 'index'])->name('services.index');
-    Route::get('services/{service}/submit', [ServiceSubmissionController::class, 'create'])->name('services.submit');
-    Route::post('services/{service}/submit', [ServiceSubmissionController::class, 'store'])->name('services.store');
-    Route::get('my-submissions', [ServiceSubmissionController::class, 'mySubmissions'])->name('services.my-submissions');
 });
 
 require __DIR__.'/auth.php';

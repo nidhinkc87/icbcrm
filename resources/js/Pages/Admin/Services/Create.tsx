@@ -38,7 +38,7 @@ export default function Create() {
             <Head title="Create Service" />
 
             <div className="py-12">
-                <div className="mx-auto max-w-5xl sm:px-6 lg:px-8">
+                <div className="max-w-4xl sm:px-6 lg:px-8">
                     <div className="overflow-hidden bg-white p-6 shadow-sm sm:rounded-lg">
                         <form onSubmit={submit}>
                             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">

@@ -29,6 +29,11 @@ class User extends Authenticatable
         return $this->hasOne(Employee::class);
     }
 
+    public function client(): HasOne
+    {
+        return $this->hasOne(Client::class);
+    }
+
     protected function casts(): array
     {
         return [

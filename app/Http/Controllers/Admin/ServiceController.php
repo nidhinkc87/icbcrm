@@ -30,7 +30,6 @@ class ServiceController extends Controller
         $services = Service::when($search, function ($query, $search) {
             $query->where('name', 'like', "%{$search}%");
         })
-            ->withCount('submissions')
             ->orderBy($sortField, $sortDirection)
             ->paginate($perPage)
             ->withQueryString();
@@ -40,7 +39,6 @@ class ServiceController extends Controller
             'name' => $service->name,
             'is_active' => $service->is_active,
             'fields_count' => count($service->form_schema ?? []),
-            'submissions_count' => $service->submissions_count,
             'created_at' => $service->created_at->format('M d, Y'),
         ]);
 
@@ -60,9 +58,9 @@ class ServiceController extends Controller
         return Inertia::render('Admin/Services/Create');
     }
 
-    public function store(Request $request): RedirectResponse
+    private function validationRules(): array
     {
-        $validated = $request->validate([
+        return [
             'name' => 'required|string|max:255',
             'description' => 'nullable|string|max:1000',
             'form_schema' => 'required|array|min:1',
@@ -72,9 +70,51 @@ class ServiceController extends Controller
             'form_schema.*.required' => 'required|boolean',
             'form_schema.*.placeholder' => 'nullable|string|max:255',
             'form_schema.*.options' => 'nullable|array',
-            'form_schema.*.options.*' => 'string|max:255',
+            'form_schema.*.options.*' => 'required|string|max:255',
             'is_active' => 'boolean',
-        ]);
+        ];
+    }
+
+    private function validationMessages(): array
+    {
+        return [
+            'form_schema.*.label.required' => 'The field label is required.',
+            'form_schema.*.options.*.required' => 'Option value cannot be empty.',
+        ];
+    }
+
+    private function validateFormSchema(Request $request): void
+    {
+        $schema = $request->input('form_schema', []);
+        $names = [];
+
+        foreach ($schema as $index => $field) {
+            // Dropdown must have at least one option
+            if (($field['type'] ?? '') === 'dropdown') {
+                $options = array_filter($field['options'] ?? [], fn ($o) => trim($o) !== '');
+                if (empty($options)) {
+                    throw \Illuminate\Validation\ValidationException::withMessages([
+                        "form_schema.{$index}.options" => 'Dropdown fields must have at least one option.',
+                    ]);
+                }
+            }
+
+            // Check for duplicate field names
+            $name = $field['name'] ?? '';
+            if ($name !== '' && in_array($name, $names)) {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    "form_schema.{$index}.label" => 'Duplicate field name. Please use a unique label.',
+                ]);
+            }
+            $names[] = $name;
+        }
+    }
+
+    public function store(Request $request): RedirectResponse
+    {
+        $validated = $request->validate($this->validationRules(), $this->validationMessages());
+
+        $this->validateFormSchema($request);
 
         Service::create($validated);
 
@@ -97,19 +137,9 @@ class ServiceController extends Controller
 
     public function update(Request $request, Service $service): RedirectResponse
     {
-        $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'description' => 'nullable|string|max:1000',
-            'form_schema' => 'required|array|min:1',
-            'form_schema.*.name' => 'required|string|max:255',
-            'form_schema.*.label' => 'required|string|max:255',
-            'form_schema.*.type' => 'required|string|in:text,textarea,dropdown,file,image,checkbox,date,number',
-            'form_schema.*.required' => 'required|boolean',
-            'form_schema.*.placeholder' => 'nullable|string|max:255',
-            'form_schema.*.options' => 'nullable|array',
-            'form_schema.*.options.*' => 'string|max:255',
-            'is_active' => 'boolean',
-        ]);
+        $validated = $request->validate($this->validationRules(), $this->validationMessages());
+
+        $this->validateFormSchema($request);
 
         $service->update($validated);
 
@@ -137,8 +167,8 @@ class ServiceController extends Controller
 
         $submissions->through(fn ($sub) => [
             'id' => $sub->id,
-            'user_name' => $sub->user->name,
-            'user_email' => $sub->user->email,
+            'user_name' => $sub->user?->name ?? 'Deleted User',
+            'user_email' => $sub->user?->email ?? '',
             'status' => $sub->status,
             'created_at' => $sub->created_at->format('M d, Y H:i'),
         ]);
@@ -158,6 +188,10 @@ class ServiceController extends Controller
 
     public function showSubmission(Service $service, ServiceSubmission $submission): Response
     {
+        if ($submission->service_id !== $service->id) {
+            abort(404);
+        }
+
         $submission->load('user:id,name,email');
 
         return Inertia::render('Admin/Services/ShowSubmission', [
@@ -168,8 +202,8 @@ class ServiceController extends Controller
             ],
             'submission' => [
                 'id' => $submission->id,
-                'user_name' => $submission->user->name,
-                'user_email' => $submission->user->email,
+                'user_name' => $submission->user?->name ?? 'Deleted User',
+                'user_email' => $submission->user?->email ?? '',
                 'form_data' => $submission->form_data,
                 'status' => $submission->status,
                 'created_at' => $submission->created_at->format('M d, Y H:i'),

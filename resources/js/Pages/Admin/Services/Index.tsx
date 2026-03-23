@@ -12,7 +12,6 @@ interface ServiceRow {
     name: string;
     is_active: boolean;
     fields_count: number;
-    submissions_count: number;
     created_at: string;
 }
 
@@ -69,18 +68,6 @@ export default function Index({ services, filters }: Props) {
             ),
         },
         { key: 'fields_count', label: 'Fields' },
-        {
-            key: 'submissions_count',
-            label: 'Submissions',
-            render: (service) => (
-                <Link
-                    href={route('admin.services.submissions', service.id)}
-                    className="text-emerald-600 hover:text-emerald-900"
-                >
-                    {service.submissions_count}
-                </Link>
-            ),
-        },
         { key: 'created_at', label: 'Created', sortable: true },
         {
             key: 'actions',

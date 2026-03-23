@@ -23,6 +23,17 @@ function slugify(text: string): string {
         .replace(/[^a-z0-9_]/g, '');
 }
 
+function makeUniqueName(baseName: string, existingNames: string[], currentIndex: number): string {
+    if (!baseName) return '';
+    let name = baseName;
+    let counter = 1;
+    while (existingNames.some((n, i) => i !== currentIndex && n === name)) {
+        name = `${baseName}_${counter}`;
+        counter++;
+    }
+    return name;
+}
+
 interface FormBuilderProps {
     fields: FormField[];
     onChange: (fields: FormField[]) => void;
@@ -49,7 +60,9 @@ export default function FormBuilder({ fields, onChange, errors = {} }: FormBuild
         updated[index] = { ...updated[index], [key]: value };
 
         if (key === 'label') {
-            updated[index].name = slugify(value as string);
+            const baseName = slugify(value as string);
+            const existingNames = updated.map((f) => f.name);
+            updated[index].name = makeUniqueName(baseName, existingNames, index);
         }
 
         if (key === 'type' && value !== 'dropdown') {
@@ -171,7 +184,7 @@ export default function FormBuilder({ fields, onChange, errors = {} }: FormBuild
                                     onChange={(e) => updateField(index, 'label', e.target.value)}
                                     placeholder="e.g. Company Name"
                                 />
-                                <InputError message={errors[`form_schema.${index}.label`]} className="mt-1" />
+                                <InputError message={errors[`form_schema.${index}.label`] || errors[`form_schema.${index}.name`]} className="mt-1" />
                             </div>
 
                             <div>
@@ -216,22 +229,30 @@ export default function FormBuilder({ fields, onChange, errors = {} }: FormBuild
                         {field.type === 'dropdown' && (
                             <div className="mt-3">
                                 <InputLabel value="Options" />
+                                {field.options.length === 0 && (
+                                    <p className="mt-1 text-xs text-amber-600">
+                                        Add at least one option for this dropdown.
+                                    </p>
+                                )}
                                 <div className="mt-1 space-y-2">
                                     {field.options.map((option, optIdx) => (
-                                        <div key={optIdx} className="flex items-center space-x-2">
-                                            <TextInput
-                                                value={option}
-                                                className="block w-full"
-                                                onChange={(e) => updateOption(index, optIdx, e.target.value)}
-                                                placeholder={`Option ${optIdx + 1}`}
-                                            />
-                                            <button
-                                                type="button"
-                                                onClick={() => removeOption(index, optIdx)}
-                                                className="text-red-400 hover:text-red-600"
-                                            >
-                                                &#10005;
-                                            </button>
+                                        <div key={optIdx}>
+                                            <div className="flex items-center space-x-2">
+                                                <TextInput
+                                                    value={option}
+                                                    className="block w-full"
+                                                    onChange={(e) => updateOption(index, optIdx, e.target.value)}
+                                                    placeholder={`Option ${optIdx + 1}`}
+                                                />
+                                                <button
+                                                    type="button"
+                                                    onClick={() => removeOption(index, optIdx)}
+                                                    className="text-red-400 hover:text-red-600"
+                                                >
+                                                    &#10005;
+                                                </button>
+                                            </div>
+                                            <InputError message={errors[`form_schema.${index}.options.${optIdx}`]} className="mt-1" />
                                         </div>
                                     ))}
                                     <button
@@ -242,6 +263,7 @@ export default function FormBuilder({ fields, onChange, errors = {} }: FormBuild
                                         + Add Option
                                     </button>
                                 </div>
+                                <InputError message={errors[`form_schema.${index}.options`]} className="mt-1" />
                             </div>
                         )}
                     </div>
