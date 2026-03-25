@@ -15,11 +15,13 @@ export default function Create() {
         description: string;
         is_active: boolean;
         form_schema: FormField[];
+        completion_schema: FormField[];
     }>({
         name: '',
         description: '',
         is_active: true,
         form_schema: [],
+        completion_schema: [],
     });
 
     const submit: FormEventHandler = (e) => {
@@ -80,9 +82,23 @@ export default function Create() {
 
                             <div className="mt-8 border-t border-gray-200 pt-6">
                                 <FormBuilder
+                                    title="Work Form"
+                                    description="Fields the employee fills while working on the task (e.g., data entry, calculations)."
                                     fields={data.form_schema}
                                     onChange={(fields) => setData('form_schema', fields)}
                                     errors={errors}
+                                    errorPrefix="form_schema"
+                                />
+                            </div>
+
+                            <div className="mt-8 border-t border-gray-200 pt-6">
+                                <FormBuilder
+                                    title="Completion Form"
+                                    description="Fields required to complete the task (e.g., certificates, confirmation numbers, proof documents)."
+                                    fields={data.completion_schema}
+                                    onChange={(fields) => setData('completion_schema', fields)}
+                                    errors={errors}
+                                    errorPrefix="completion_schema"
                                 />
                             </div>
 

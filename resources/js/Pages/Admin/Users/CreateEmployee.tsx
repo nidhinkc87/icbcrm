@@ -6,7 +6,11 @@ import TextInput from '@/Components/TextInput';
 import { Head, Link, useForm } from '@inertiajs/react';
 import { FormEventHandler } from 'react';
 
-export default function CreateEmployee() {
+interface Props {
+    roles: string[];
+}
+
+export default function CreateEmployee({ roles }: Props) {
     const { data, setData, post, processing, errors } = useForm({
         name: '',
         email: '',
@@ -15,6 +19,7 @@ export default function CreateEmployee() {
         department: '',
         designation: '',
         date_of_joining: '',
+        role: '',
     });
 
     const submit: FormEventHandler = (e) => {
@@ -117,6 +122,40 @@ export default function CreateEmployee() {
                                 </div>
 
                             </div>
+
+                            {/* Role */}
+                            {roles.length > 0 && (
+                                <>
+                                    <h3 className="mt-8 border-t border-gray-200 pt-6 text-lg font-medium text-gray-900">
+                                        Role
+                                    </h3>
+                                    <div className="mt-4 space-y-2">
+                                        <label className="flex items-center gap-2">
+                                            <input
+                                                type="radio"
+                                                name="role"
+                                                className="border-gray-300 text-emerald-600 shadow-sm focus:ring-emerald-500"
+                                                checked={data.role === ''}
+                                                onChange={() => setData('role', '')}
+                                            />
+                                            <span className="text-sm text-gray-700">None</span>
+                                        </label>
+                                        {roles.map((r) => (
+                                            <label key={r} className="flex items-center gap-2">
+                                                <input
+                                                    type="radio"
+                                                    name="role"
+                                                    className="border-gray-300 text-emerald-600 shadow-sm focus:ring-emerald-500"
+                                                    checked={data.role === r}
+                                                    onChange={() => setData('role', r)}
+                                                />
+                                                <span className="text-sm text-gray-700 capitalize">{r}</span>
+                                            </label>
+                                        ))}
+                                    </div>
+                                    <InputError message={errors.role} className="mt-2" />
+                                </>
+                            )}
 
                             <div className="mt-6 flex items-center justify-end space-x-4">
                                 <Link

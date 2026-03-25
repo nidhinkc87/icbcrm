@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\ClientDocument;
 use App\Models\User;
 use App\Notifications\UserInvitation;
+use Spatie\Permission\Models\Role;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -47,11 +48,15 @@ class UserController extends Controller
           ->withQueryString();
 
         $users->through(function ($user) {
+            $roles = $user->getRoleNames();
+            $baseRole = $roles->first();
+            $additionalRole = $roles->first(fn ($r) => ! in_array($r, ['employee', 'client', 'admin']));
+
             return [
                 'id' => $user->id,
                 'name' => $user->name,
                 'email' => $user->email,
-                'role' => $user->getRoleNames()->first(),
+                'role' => $additionalRole ?? $baseRole,
                 'created_at' => $user->created_at->format('M d, Y'),
             ];
         });
@@ -71,12 +76,13 @@ class UserController extends Controller
     public function create(Request $request): Response
     {
         $type = $request->query('type', 'employee');
+        $roles = Role::where('name', '!=', 'admin')->pluck('name');
 
         if ($type === 'client') {
-            return Inertia::render('Admin/Users/CreateClient');
+            return Inertia::render('Admin/Users/CreateClient', ['roles' => $roles]);
         }
 
-        return Inertia::render('Admin/Users/CreateEmployee');
+        return Inertia::render('Admin/Users/CreateEmployee', ['roles' => $roles]);
     }
 
     public function store(Request $request): RedirectResponse
@@ -87,6 +93,7 @@ class UserController extends Controller
             'name' => 'required|string|max:255',
             'email' => 'required|string|lowercase|email|max:255|unique:' . User::class,
             'type' => 'required|string|in:employee,client',
+            'role' => 'nullable|string|exists:roles,name',
         ];
 
         if ($type === 'employee') {
@@ -128,7 +135,11 @@ class UserController extends Controller
             'must_set_password' => true,
         ]);
 
-        $user->assignRole($validated['type']);
+        $roles = [$validated['type']];
+        if (! empty($validated['role'])) {
+            $roles[] = $validated['role'];
+        }
+        $user->syncRoles(array_unique($roles));
 
         if ($type === 'employee') {
             $user->employee()->create([
@@ -213,6 +224,8 @@ class UserController extends Controller
     public function edit(User $user): Response
     {
         $role = $user->getRoleNames()->first();
+        $allRoles = Role::where('name', '!=', 'admin')->pluck('name');
+        $userRoles = $user->getRoleNames()->toArray();
 
         if ($role === 'client') {
             $user->load('client.documents');
@@ -231,6 +244,8 @@ class UserController extends Controller
             }
 
             return Inertia::render('Admin/Users/EditClient', [
+                'allRoles' => $allRoles,
+                'userRoles' => $userRoles,
                 'user' => [
                     'id' => $user->id,
                     'name' => $user->name,
@@ -247,6 +262,8 @@ class UserController extends Controller
         }
 
         return Inertia::render('Admin/Users/EditEmployee', [
+            'allRoles' => $allRoles,
+            'userRoles' => $userRoles,
             'user' => [
                 'id' => $user->id,
                 'name' => $user->name,
@@ -267,6 +284,7 @@ class UserController extends Controller
             'name' => 'required|string|max:255',
             'email' => 'required|string|lowercase|email|max:255|unique:users,email,' . $user->id,
             'password' => ['nullable', 'confirmed', Rules\Password::defaults()],
+            'role' => 'nullable|string|exists:roles,name',
         ];
 
         if ($role === 'employee') {
@@ -303,6 +321,13 @@ class UserController extends Controller
                 ? ['password' => $validated['password']]
                 : []),
         ]);
+
+        // Sync roles — always keep the base role (employee/client)
+        $newRoles = [$role];
+        if (! empty($validated['role'])) {
+            $newRoles[] = $validated['role'];
+        }
+        $user->syncRoles(array_unique($newRoles));
 
         if ($role === 'employee') {
             $user->employee()->updateOrCreate(

@@ -19,11 +19,13 @@ export default function Edit({ service }: Props) {
         description: string;
         is_active: boolean;
         form_schema: FormField[];
+        completion_schema: FormField[];
     }>({
         name: service.name,
         description: service.description ?? '',
         is_active: service.is_active,
         form_schema: service.form_schema,
+        completion_schema: service.completion_schema ?? [],
     });
 
     const submit: FormEventHandler = (e) => {
@@ -84,9 +86,23 @@ export default function Edit({ service }: Props) {
 
                             <div className="mt-8 border-t border-gray-200 pt-6">
                                 <FormBuilder
+                                    title="Work Form"
+                                    description="Fields the employee fills while working on the task."
                                     fields={data.form_schema}
                                     onChange={(fields) => setData('form_schema', fields)}
                                     errors={errors}
+                                    errorPrefix="form_schema"
+                                />
+                            </div>
+
+                            <div className="mt-8 border-t border-gray-200 pt-6">
+                                <FormBuilder
+                                    title="Completion Form"
+                                    description="Fields required to complete the task (e.g., certificates, proof documents)."
+                                    fields={data.completion_schema}
+                                    onChange={(fields) => setData('completion_schema', fields)}
+                                    errors={errors}
+                                    errorPrefix="completion_schema"
                                 />
                             </div>
 

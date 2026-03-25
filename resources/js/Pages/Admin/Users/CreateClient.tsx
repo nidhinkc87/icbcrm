@@ -22,7 +22,11 @@ interface AdditionalDoc {
     file: File | null;
 }
 
-export default function CreateClient() {
+interface Props {
+    roles: string[];
+}
+
+export default function CreateClient({ roles }: Props) {
     const [data, setData] = useState({
         name: '',
         email: '',
@@ -47,6 +51,7 @@ export default function CreateClient() {
         moa: null,
     });
 
+    const [selectedRole, setSelectedRole] = useState('');
     const [additionalDocs, setAdditionalDocs] = useState<AdditionalDoc[]>([]);
     const [errors, setErrors] = useState<Record<string, string>>({});
     const [processing, setProcessing] = useState(false);
@@ -85,6 +90,11 @@ export default function CreateClient() {
         Object.entries(data).forEach(([key, value]) => {
             formData.append(key, value);
         });
+
+        // Role
+        if (selectedRole) {
+            formData.append('role', selectedRole);
+        }
 
         // KYC files
         Object.entries(kycFiles).forEach(([key, file]) => {
@@ -306,6 +316,40 @@ export default function CreateClient() {
                             >
                                 + Add Document
                             </button>
+
+                            {/* Role */}
+                            {roles.length > 0 && (
+                                <>
+                                    <h3 className="mt-8 border-t border-gray-200 pt-6 text-lg font-medium text-gray-900">
+                                        Role
+                                    </h3>
+                                    <div className="mt-4 space-y-2">
+                                        <label className="flex items-center gap-2">
+                                            <input
+                                                type="radio"
+                                                name="role"
+                                                className="border-gray-300 text-emerald-600 shadow-sm focus:ring-emerald-500"
+                                                checked={selectedRole === ''}
+                                                onChange={() => setSelectedRole('')}
+                                            />
+                                            <span className="text-sm text-gray-700">None</span>
+                                        </label>
+                                        {roles.map((r) => (
+                                            <label key={r} className="flex items-center gap-2">
+                                                <input
+                                                    type="radio"
+                                                    name="role"
+                                                    className="border-gray-300 text-emerald-600 shadow-sm focus:ring-emerald-500"
+                                                    checked={selectedRole === r}
+                                                    onChange={() => setSelectedRole(r)}
+                                                />
+                                                <span className="text-sm text-gray-700 capitalize">{r}</span>
+                                            </label>
+                                        ))}
+                                    </div>
+                                    <InputError message={errors.role} className="mt-2" />
+                                </>
+                            )}
 
                             {/* Submit */}
                             <div className="mt-8 flex items-center justify-end space-x-4 border-t border-gray-200 pt-6">

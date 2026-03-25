@@ -34,5 +34,7 @@ class DatabaseSeeder extends Seeder
             'email' => 'client@icbcrm.com',
         ]);
         $client->assignRole('client');
+
+        $this->call(SampleDataSeeder::class);
     }
 }

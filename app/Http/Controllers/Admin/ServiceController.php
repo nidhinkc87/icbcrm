@@ -60,19 +60,25 @@ class ServiceController extends Controller
 
     private function validationRules(): array
     {
-        return [
+        $fieldRules = function (string $prefix) {
+            return [
+                "{$prefix}.*.name" => 'required|string|max:255',
+                "{$prefix}.*.label" => 'required|string|max:255',
+                "{$prefix}.*.type" => 'required|string|in:text,textarea,dropdown,file,image,checkbox,date,number',
+                "{$prefix}.*.required" => 'required|boolean',
+                "{$prefix}.*.placeholder" => 'nullable|string|max:255',
+                "{$prefix}.*.options" => 'nullable|array',
+                "{$prefix}.*.options.*" => 'required|string|max:255',
+            ];
+        };
+
+        return array_merge([
             'name' => 'required|string|max:255',
             'description' => 'nullable|string|max:1000',
             'form_schema' => 'required|array|min:1',
-            'form_schema.*.name' => 'required|string|max:255',
-            'form_schema.*.label' => 'required|string|max:255',
-            'form_schema.*.type' => 'required|string|in:text,textarea,dropdown,file,image,checkbox,date,number',
-            'form_schema.*.required' => 'required|boolean',
-            'form_schema.*.placeholder' => 'nullable|string|max:255',
-            'form_schema.*.options' => 'nullable|array',
-            'form_schema.*.options.*' => 'required|string|max:255',
+            'completion_schema' => 'nullable|array',
             'is_active' => 'boolean',
-        ];
+        ], $fieldRules('form_schema'), $fieldRules('completion_schema'));
     }
 
     private function validationMessages(): array
@@ -80,30 +86,27 @@ class ServiceController extends Controller
         return [
             'form_schema.*.label.required' => 'The field label is required.',
             'form_schema.*.options.*.required' => 'Option value cannot be empty.',
+            'completion_schema.*.label.required' => 'The field label is required.',
+            'completion_schema.*.options.*.required' => 'Option value cannot be empty.',
         ];
     }
 
-    private function validateFormSchema(Request $request): void
+    private function validateSchemaFields(array $schema, string $prefix): void
     {
-        $schema = $request->input('form_schema', []);
         $names = [];
-
         foreach ($schema as $index => $field) {
-            // Dropdown must have at least one option
             if (($field['type'] ?? '') === 'dropdown') {
                 $options = array_filter($field['options'] ?? [], fn ($o) => trim($o) !== '');
                 if (empty($options)) {
                     throw \Illuminate\Validation\ValidationException::withMessages([
-                        "form_schema.{$index}.options" => 'Dropdown fields must have at least one option.',
+                        "{$prefix}.{$index}.options" => 'Dropdown fields must have at least one option.',
                     ]);
                 }
             }
-
-            // Check for duplicate field names
             $name = $field['name'] ?? '';
             if ($name !== '' && in_array($name, $names)) {
                 throw \Illuminate\Validation\ValidationException::withMessages([
-                    "form_schema.{$index}.label" => 'Duplicate field name. Please use a unique label.',
+                    "{$prefix}.{$index}.label" => 'Duplicate field name. Please use a unique label.',
                 ]);
             }
             $names[] = $name;
@@ -114,7 +117,10 @@ class ServiceController extends Controller
     {
         $validated = $request->validate($this->validationRules(), $this->validationMessages());
 
-        $this->validateFormSchema($request);
+        $this->validateSchemaFields($request->input('form_schema', []), 'form_schema');
+        $this->validateSchemaFields($request->input('completion_schema', []), 'completion_schema');
+
+        $validated['completion_schema'] = $validated['completion_schema'] ?? [];
 
         Service::create($validated);
 
@@ -130,6 +136,7 @@ class ServiceController extends Controller
                 'name' => $service->name,
                 'description' => $service->description,
                 'form_schema' => $service->form_schema,
+                'completion_schema' => $service->completion_schema ?? [],
                 'is_active' => $service->is_active,
             ],
         ]);
@@ -139,7 +146,10 @@ class ServiceController extends Controller
     {
         $validated = $request->validate($this->validationRules(), $this->validationMessages());
 
-        $this->validateFormSchema($request);
+        $this->validateSchemaFields($request->input('form_schema', []), 'form_schema');
+        $this->validateSchemaFields($request->input('completion_schema', []), 'completion_schema');
+
+        $validated['completion_schema'] = $validated['completion_schema'] ?? [];
 
         $service->update($validated);
 

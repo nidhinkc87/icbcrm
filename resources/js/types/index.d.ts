@@ -40,6 +40,7 @@ export interface ServiceData {
     name: string;
     description: string | null;
     form_schema: FormField[];
+    completion_schema: FormField[];
     is_active: boolean;
 }
 

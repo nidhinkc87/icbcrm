@@ -38,9 +38,12 @@ interface FormBuilderProps {
     fields: FormField[];
     onChange: (fields: FormField[]) => void;
     errors?: Record<string, string>;
+    title?: string;
+    description?: string;
+    errorPrefix?: string;
 }
 
-export default function FormBuilder({ fields, onChange, errors = {} }: FormBuilderProps) {
+export default function FormBuilder({ fields, onChange, errors = {}, title = 'Form Fields', description, errorPrefix = 'form_schema' }: FormBuilderProps) {
     const addField = () => {
         onChange([
             ...fields,
@@ -114,7 +117,10 @@ export default function FormBuilder({ fields, onChange, errors = {} }: FormBuild
     return (
         <div>
             <div className="mb-4 flex items-center justify-between">
-                <h3 className="text-lg font-medium text-gray-900">Form Fields</h3>
+                <div>
+                    <h3 className="text-lg font-medium text-gray-900">{title}</h3>
+                    {description && <p className="mt-0.5 text-sm text-gray-500">{description}</p>}
+                </div>
                 <button
                     type="button"
                     onClick={addField}
@@ -184,7 +190,7 @@ export default function FormBuilder({ fields, onChange, errors = {} }: FormBuild
                                     onChange={(e) => updateField(index, 'label', e.target.value)}
                                     placeholder="e.g. Company Name"
                                 />
-                                <InputError message={errors[`form_schema.${index}.label`] || errors[`form_schema.${index}.name`]} className="mt-1" />
+                                <InputError message={errors[`${errorPrefix}.${index}.label`] || errors[`${errorPrefix}.${index}.name`]} className="mt-1" />
                             </div>
 
                             <div>
@@ -200,7 +206,7 @@ export default function FormBuilder({ fields, onChange, errors = {} }: FormBuild
                                         </option>
                                     ))}
                                 </SelectInput>
-                                <InputError message={errors[`form_schema.${index}.type`]} className="mt-1" />
+                                <InputError message={errors[`${errorPrefix}.${index}.type`]} className="mt-1" />
                             </div>
 
                             {field.type !== 'checkbox' && (
@@ -252,7 +258,7 @@ export default function FormBuilder({ fields, onChange, errors = {} }: FormBuild
                                                     &#10005;
                                                 </button>
                                             </div>
-                                            <InputError message={errors[`form_schema.${index}.options.${optIdx}`]} className="mt-1" />
+                                            <InputError message={errors[`${errorPrefix}.${index}.options.${optIdx}`]} className="mt-1" />
                                         </div>
                                     ))}
                                     <button
@@ -263,14 +269,14 @@ export default function FormBuilder({ fields, onChange, errors = {} }: FormBuild
                                         + Add Option
                                     </button>
                                 </div>
-                                <InputError message={errors[`form_schema.${index}.options`]} className="mt-1" />
+                                <InputError message={errors[`${errorPrefix}.${index}.options`]} className="mt-1" />
                             </div>
                         )}
                     </div>
                 ))}
             </div>
 
-            <InputError message={errors['form_schema']} className="mt-2" />
+            <InputError message={errors[errorPrefix]} className="mt-2" />
         </div>
     );
 }

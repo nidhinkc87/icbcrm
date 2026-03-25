@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-#[Fillable(['service_id', 'user_id', 'form_data', 'status'])]
+#[Fillable(['service_id', 'user_id', 'task_id', 'form_data', 'status'])]
 class ServiceSubmission extends Model
 {
     protected function casts(): array
@@ -24,5 +24,10 @@ class ServiceSubmission extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function task(): BelongsTo
+    {
+        return $this->belongsTo(Task::class);
     }
 }
