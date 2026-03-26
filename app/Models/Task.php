@@ -80,6 +80,11 @@ class Task extends Model
         return $this->hasMany(Task::class, 'parent_task_id');
     }
 
+    public function queries(): HasMany
+    {
+        return $this->hasMany(TaskQuery::class);
+    }
+
     public function submission(): HasOne
     {
         return $this->hasOne(ServiceSubmission::class);
@@ -106,7 +111,8 @@ class Task extends Model
         $query->where(function ($q) use ($user) {
             $q->where('created_by', $user->id)
               ->orWhere('responsible_id', $user->id)
-              ->orWhereHas('collaborators', fn ($cq) => $cq->where('users.id', $user->id));
+              ->orWhereHas('collaborators', fn ($cq) => $cq->where('users.id', $user->id))
+              ->orWhereHas('client', fn ($cq) => $cq->where('user_id', $user->id));
         });
     }
 }

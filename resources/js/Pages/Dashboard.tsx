@@ -54,20 +54,51 @@ interface ServiceProgress {
     pending: number;
 }
 
+interface CollaboratorTask {
+    id: number;
+    service_name: string;
+    client_name: string;
+    responsible_name: string;
+    status: string;
+    due_date: string;
+    priority: string;
+    can_work: boolean;
+}
+
+interface PriorityBreakdown {
+    name: string;
+    total: number;
+    completed: number;
+}
+
+interface PendingQuery {
+    id: number;
+    task_id: number;
+    subject: string;
+    priority: 'normal' | 'urgent';
+    status: 'open' | 'answered';
+    raised_by_name: string;
+    service_name: string;
+    created_at: string;
+}
+
 interface Props extends PageProps {
     role: 'admin' | 'employee' | 'client';
     kpis: Record<string, number>;
     charts: {
         status_distribution: ChartDataPoint[];
-        priority_distribution?: ChartDataPoint[];
+        priority_distribution?: any[];
         completion_trend?: TrendDataPoint[];
         employee_workload?: ChartDataPoint[];
         service_usage?: ChartDataPoint[];
+        on_time_vs_late?: ChartDataPoint[];
     };
     recent_activity: ActivityItem[];
     overdue_tasks?: OverdueTask[];
     upcoming_tasks?: UpcomingTask[];
     service_progress?: ServiceProgress[];
+    collaborator_tasks?: CollaboratorTask[];
+    pending_queries?: PendingQuery[];
 }
 
 const STATUS_COLORS: Record<string, string> = {
@@ -98,12 +129,12 @@ const statusBadgeColors: Record<string, string> = {
     completed: 'bg-green-100 text-green-800',
 };
 
-function KpiCard({ label, value, icon, color, subtext }: {
+function KpiCard({ label, value, icon, color, suffix }: {
     label: string;
     value: number;
     icon: React.ReactNode;
     color: string;
-    subtext?: string;
+    suffix?: string;
 }) {
     return (
         <div className="overflow-hidden rounded-xl bg-white shadow-sm">
@@ -114,8 +145,9 @@ function KpiCard({ label, value, icon, color, subtext }: {
                     </div>
                     <div className="ml-4 min-w-0 flex-1">
                         <p className="text-sm font-medium text-gray-500 truncate">{label}</p>
-                        <p className="text-2xl font-bold text-gray-900">{value}</p>
-                        {subtext && <p className="text-xs text-gray-400 mt-0.5">{subtext}</p>}
+                        <p className="text-2xl font-bold text-gray-900">
+                            {value}{suffix && <span className="ml-0.5 text-sm font-medium text-gray-400">{suffix}</span>}
+                        </p>
                     </div>
                 </div>
             </div>
@@ -147,6 +179,46 @@ function EmptyChart({ message }: { message: string }) {
     );
 }
 
+const queryStatusColors: Record<string, string> = {
+    open: 'bg-amber-100 text-amber-800',
+    answered: 'bg-blue-100 text-blue-800',
+};
+
+function PendingQueriesWidget({ queries }: { queries: PendingQuery[] }) {
+    if (!queries || queries.length === 0) return null;
+
+    return (
+        <ChartCard title="Queries Waiting for You" subtitle={`${queries.length} pending quer${queries.length === 1 ? 'y' : 'ies'}`}>
+            <div className="max-h-[300px] space-y-3 overflow-y-auto pr-1">
+                {queries.map((q) => (
+                    <Link
+                        key={q.id}
+                        href={route('tasks.queries.show', [q.task_id, q.id])}
+                        className="block rounded-lg border border-gray-100 p-3 transition hover:border-emerald-200 hover:bg-emerald-50/50"
+                    >
+                        <div className="flex items-center justify-between gap-2">
+                            <p className="truncate text-sm font-medium text-gray-900">{q.subject}</p>
+                            <div className="flex shrink-0 items-center gap-1.5">
+                                {q.priority === 'urgent' && (
+                                    <span className="inline-flex rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700">
+                                        Urgent
+                                    </span>
+                                )}
+                                <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium capitalize ${queryStatusColors[q.status]}`}>
+                                    {q.status}
+                                </span>
+                            </div>
+                        </div>
+                        <p className="mt-1 text-xs text-gray-500">
+                            {q.service_name} &middot; raised by {q.raised_by_name} &middot; {q.created_at}
+                        </p>
+                    </Link>
+                ))}
+            </div>
+        </ChartCard>
+    );
+}
+
 // Custom tooltip
 function CustomTooltip({ active, payload, label }: any) {
     if (active && payload && payload.length) {
@@ -160,7 +232,7 @@ function CustomTooltip({ active, payload, label }: any) {
     return null;
 }
 
-function AdminDashboard({ kpis, charts, recent_activity, overdue_tasks }: Props) {
+function AdminDashboard({ kpis, charts, recent_activity, overdue_tasks, pending_queries }: Props) {
     return (
         <>
             {/* KPI Cards */}
@@ -351,31 +423,47 @@ function AdminDashboard({ kpis, charts, recent_activity, overdue_tasks }: Props)
                     )}
                 </ChartCard>
             </div>
+
+            {pending_queries && pending_queries.length > 0 && (
+                <PendingQueriesWidget queries={pending_queries} />
+            )}
         </>
     );
 }
 
-function EmployeeDashboard({ kpis, charts, upcoming_tasks, recent_activity }: Props) {
+function EmployeeDashboard({ kpis, charts, upcoming_tasks, overdue_tasks, collaborator_tasks, recent_activity, pending_queries }: Props) {
+    const ON_TIME_COLORS: Record<string, string> = { 'On Time': '#10b981', 'Late': '#ef4444' };
+
     return (
         <>
-            {/* KPI Cards */}
+            {/* KPI Cards - Row 1: Task counts */}
             <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
                 <KpiCard label="My Tasks" value={kpis.my_tasks} color="bg-emerald-50"
                     icon={<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="h-6 w-6 text-emerald-600"><path strokeLinecap="round" strokeLinejoin="round" d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 002.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 00-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 00.75-.75 2.25 2.25 0 00-.1-.664m-5.8 0A2.251 2.251 0 0113.5 2.25H15c1.012 0 1.867.668 2.15 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V8.25m0 0H4.875c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V9.375c0-.621-.504-1.125-1.125-1.125H8.25zM6.75 12h.008v.008H6.75V12zm0 3h.008v.008H6.75V15zm0 3h.008v.008H6.75V18z" /></svg>}
                 />
-                <KpiCard label="In Progress" value={kpis.in_progress} color="bg-blue-50"
-                    icon={<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="h-6 w-6 text-blue-600"><path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182M2.985 19.644l3.181-3.182" /></svg>}
-                />
                 <KpiCard label="Completed" value={kpis.completed} color="bg-green-50"
                     icon={<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="h-6 w-6 text-green-600"><path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>}
+                />
+                <KpiCard label="In Progress" value={kpis.in_progress} color="bg-blue-50"
+                    icon={<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="h-6 w-6 text-blue-600"><path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182M2.985 19.644l3.181-3.182" /></svg>}
                 />
                 <KpiCard label="Overdue" value={kpis.overdue} color="bg-red-50"
                     icon={<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="h-6 w-6 text-red-600"><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" /></svg>}
                 />
             </div>
 
+            {/* KPI Cards - Row 2: Performance insights */}
+            <div className="grid grid-cols-2 gap-4">
+                <KpiCard label="On-Time Rate" value={kpis.on_time_rate} color="bg-purple-50" suffix="%"
+                    icon={<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="h-6 w-6 text-purple-600"><path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>}
+                />
+                <KpiCard label="Avg Completion Time" value={kpis.avg_days} color="bg-amber-50" suffix=" days"
+                    icon={<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="h-6 w-6 text-amber-600"><path strokeLinecap="round" strokeLinejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" /></svg>}
+                />
+            </div>
+
+            {/* Row 1: Status + On-Time */}
             <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-                {/* Status Chart */}
                 <ChartCard title="My Task Status">
                     {charts.status_distribution.length > 0 ? (
                         <ResponsiveContainer width="100%" height={250}>
@@ -392,35 +480,138 @@ function EmployeeDashboard({ kpis, charts, upcoming_tasks, recent_activity }: Pr
                     ) : <EmptyChart message="No tasks assigned" />}
                 </ChartCard>
 
-                {/* Upcoming Due Dates */}
+                <ChartCard title="On-Time vs Late Delivery">
+                    {charts.on_time_vs_late && charts.on_time_vs_late.length > 0 ? (
+                        <ResponsiveContainer width="100%" height={250}>
+                            <PieChart>
+                                <Pie data={charts.on_time_vs_late} cx="50%" cy="50%" innerRadius={60} outerRadius={100} paddingAngle={3} dataKey="value"
+                                    label={({ name, percent }: any) => `${name} ${((percent ?? 0) * 100).toFixed(0)}%`}>
+                                    {charts.on_time_vs_late.map((entry, i) => (
+                                        <Cell key={i} fill={ON_TIME_COLORS[entry.name] || CHART_COLORS[i]} />
+                                    ))}
+                                </Pie>
+                                <Tooltip content={<CustomTooltip />} />
+                            </PieChart>
+                        </ResponsiveContainer>
+                    ) : <EmptyChart message="No completed tasks yet" />}
+                </ChartCard>
+            </div>
+
+            {/* Row 2: Completion Trend + Priority */}
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+                <ChartCard title="Monthly Completion Trend" subtitle="Last 6 months">
+                    {charts.completion_trend && charts.completion_trend.some((d: any) => d.count > 0) ? (
+                        <ResponsiveContainer width="100%" height={250}>
+                            <AreaChart data={charts.completion_trend}>
+                                <defs>
+                                    <linearGradient id="empColorCount" x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="5%" stopColor="#10b981" stopOpacity={0.15} />
+                                        <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
+                                    </linearGradient>
+                                </defs>
+                                <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                                <XAxis dataKey="month" tick={{ fontSize: 11 }} />
+                                <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
+                                <Tooltip content={<CustomTooltip />} />
+                                <Area type="monotone" dataKey="count" stroke="#10b981" strokeWidth={2} fill="url(#empColorCount)" />
+                            </AreaChart>
+                        </ResponsiveContainer>
+                    ) : <EmptyChart message="No completion data yet" />}
+                </ChartCard>
+
+                <ChartCard title="Tasks by Priority">
+                    {charts.priority_distribution && charts.priority_distribution.length > 0 ? (
+                        <ResponsiveContainer width="100%" height={250}>
+                            <BarChart data={charts.priority_distribution}>
+                                <CartesianGrid strokeDasharray="3 3" horizontal />
+                                <XAxis dataKey="name" tick={{ fontSize: 11 }} />
+                                <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
+                                <Tooltip content={<CustomTooltip />} />
+                                <Legend />
+                                <Bar dataKey="total" name="Total" fill="#d1d5db" radius={[4, 4, 0, 0]} />
+                                <Bar dataKey="completed" name="Completed" fill="#10b981" radius={[4, 4, 0, 0]} />
+                            </BarChart>
+                        </ResponsiveContainer>
+                    ) : <EmptyChart message="No tasks yet" />}
+                </ChartCard>
+            </div>
+
+            {/* Row 3: Upcoming + Overdue */}
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
                 <ChartCard title="Upcoming Due Dates" subtitle="Next 7 days">
                     {upcoming_tasks && upcoming_tasks.length > 0 ? (
-                        <div className="max-h-[250px] space-y-2 overflow-y-auto pr-1">
+                        <div className="max-h-[280px] space-y-2 overflow-y-auto pr-1">
                             {upcoming_tasks.map((task) => (
-                                <Link
-                                    key={task.id}
-                                    href={route('tasks.show', task.id)}
-                                    className="block rounded-lg border border-gray-100 p-3 hover:bg-gray-50 transition"
-                                >
+                                <Link key={task.id} href={route('tasks.show', task.id)} className="block rounded-lg border border-gray-100 p-3 hover:bg-gray-50 transition">
                                     <div className="flex items-center justify-between">
                                         <p className="text-sm font-medium text-gray-900">{task.service_name}</p>
-                                        <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium capitalize ${priorityBadgeColors[task.priority] || ''}`}>
-                                            {task.priority}
-                                        </span>
+                                        <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium capitalize ${priorityBadgeColors[task.priority] || ''}`}>{task.priority}</span>
                                     </div>
-                                    <p className="mt-0.5 text-xs text-gray-500">
-                                        {task.client_name} · Due {task.due_date}
-                                    </p>
+                                    <p className="mt-0.5 text-xs text-gray-500">{task.client_name} · Due {task.due_date}</p>
                                 </Link>
                             ))}
                         </div>
                     ) : (
-                        <div className="flex h-[250px] items-center justify-center">
-                            <p className="text-sm text-gray-400">No upcoming deadlines</p>
+                        <div className="flex h-[250px] flex-col items-center justify-center">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="h-10 w-10 text-green-300"><path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                            <p className="mt-2 text-sm font-medium text-green-600">All clear!</p>
+                            <p className="text-xs text-gray-400">No upcoming deadlines this week</p>
+                        </div>
+                    )}
+                </ChartCard>
+
+                <ChartCard title="Overdue Tasks">
+                    {overdue_tasks && overdue_tasks.length > 0 ? (
+                        <div className="max-h-[280px] space-y-2 overflow-y-auto pr-1">
+                            {overdue_tasks.map((task: any) => (
+                                <Link key={task.id} href={route('tasks.show', task.id)} className="block rounded-lg border border-red-100 bg-red-50/50 p-3 hover:bg-red-50 transition">
+                                    <div className="flex items-center justify-between">
+                                        <p className="text-sm font-medium text-gray-900">{task.service_name}</p>
+                                        <span className="inline-flex rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700">{task.days_overdue}d overdue</span>
+                                    </div>
+                                    <p className="mt-0.5 text-xs text-gray-500">{task.client_name} · Due {task.due_date}</p>
+                                </Link>
+                            ))}
+                        </div>
+                    ) : (
+                        <div className="flex h-[250px] flex-col items-center justify-center">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="h-10 w-10 text-green-300"><path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                            <p className="mt-2 text-sm font-medium text-green-600">All caught up!</p>
+                            <p className="text-xs text-gray-400">No overdue tasks</p>
                         </div>
                     )}
                 </ChartCard>
             </div>
+
+            {/* Collaborator Tasks */}
+            <ChartCard title="Collaborator Tasks" subtitle="Tasks where you are a collaborator">
+                {collaborator_tasks && collaborator_tasks.length > 0 ? (
+                    <div className="max-h-[320px] space-y-2 overflow-y-auto pr-1">
+                        {collaborator_tasks.map((task) => (
+                            <Link key={task.id} href={route('tasks.show', task.id)} className="block rounded-lg border border-gray-100 p-3 hover:bg-gray-50 transition">
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-2">
+                                        <p className="text-sm font-medium text-gray-900">{task.service_name}</p>
+                                        <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${task.can_work ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-500'}`}>
+                                            {task.can_work ? 'Can work' : 'View only'}
+                                        </span>
+                                    </div>
+                                    <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium capitalize ${statusBadgeColors[task.status] || 'bg-gray-100 text-gray-600'}`}>
+                                        {task.status.replace('_', ' ')}
+                                    </span>
+                                </div>
+                                <p className="mt-0.5 text-xs text-gray-500">
+                                    {task.client_name} · Responsible: {task.responsible_name} · Due {task.due_date}
+                                </p>
+                            </Link>
+                        ))}
+                    </div>
+                ) : (
+                    <div className="flex h-[200px] items-center justify-center">
+                        <p className="text-sm text-gray-400">No collaborator tasks</p>
+                    </div>
+                )}
+            </ChartCard>
 
             {/* Recent Activity */}
             <ChartCard title="Recent Activity on My Tasks">
@@ -448,11 +639,15 @@ function EmployeeDashboard({ kpis, charts, upcoming_tasks, recent_activity }: Pr
                     </div>
                 )}
             </ChartCard>
+
+            {pending_queries && pending_queries.length > 0 && (
+                <PendingQueriesWidget queries={pending_queries} />
+            )}
         </>
     );
 }
 
-function ClientDashboard({ kpis, charts, service_progress, recent_activity }: Props) {
+function ClientDashboard({ kpis, charts, service_progress, recent_activity, pending_queries }: Props) {
     return (
         <>
             {/* KPI Cards */}
@@ -538,6 +733,10 @@ function ClientDashboard({ kpis, charts, service_progress, recent_activity }: Pr
                     </div>
                 )}
             </ChartCard>
+
+            {pending_queries && pending_queries.length > 0 && (
+                <PendingQueriesWidget queries={pending_queries} />
+            )}
         </>
     );
 }

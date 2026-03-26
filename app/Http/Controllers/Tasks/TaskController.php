@@ -8,8 +8,14 @@ use App\Models\Service;
 use App\Models\Task;
 use App\Models\ServiceSubmission;
 use App\Models\User;
+use App\Notifications\Task\TaskCompleted;
+use App\Notifications\Task\TaskCreated;
+use App\Notifications\Task\TaskDeleted;
+use App\Notifications\Task\TaskReassigned;
+use App\Notifications\Task\TaskStatusChanged;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -42,11 +48,18 @@ class TaskController extends Controller
             'pending' => (clone $baseQuery)->where('status', 'pending')->count(),
             'in_progress' => (clone $baseQuery)->where('status', 'in_progress')->count(),
             'completed' => (clone $baseQuery)->where('status', 'completed')->count(),
+            'overdue' => (clone $baseQuery)->where('status', '!=', 'completed')->where('due_date', '<', now()->toDateString())->count(),
         ];
 
         $tasks = Task::visibleTo($user)
             ->with(['service:id,name', 'client.user:id,name', 'responsible:id,name'])
-            ->when($status, fn ($q, $s) => $q->where('status', $s))
+            ->when($status, function ($q) use ($status) {
+                if ($status === 'overdue') {
+                    $q->where('status', '!=', 'completed')->where('due_date', '<', now()->toDateString());
+                } else {
+                    $q->where('status', $status);
+                }
+            })
             ->when($search, function ($q, $search) {
                 $q->where(function ($sq) use ($search) {
                     $sq->whereHas('service', fn ($s) => $s->where('name', 'like', "%{$search}%"))
@@ -173,6 +186,25 @@ class TaskController extends Controller
             }
         }
 
+        // Notify responsible user and collaborators
+        $task->load(['service:id,name', 'client.user:id,name', 'creator:id,name', 'responsible:id,name']);
+        $recipients = collect();
+
+        if ($task->responsible && $task->responsible_id !== auth()->id()) {
+            $recipients->push($task->responsible);
+        }
+
+        if (! empty($validated['collaborator_ids'])) {
+            $collaborators = User::whereIn('id', $validated['collaborator_ids'])
+                ->where('id', '!=', auth()->id())
+                ->get();
+            $recipients = $recipients->merge($collaborators);
+        }
+
+        if ($recipients->isNotEmpty()) {
+            Notification::send($recipients->unique('id'), new TaskCreated($task));
+        }
+
         return redirect()->route('tasks.show', $task)->with('success', 'Task created successfully.');
     }
 
@@ -269,6 +301,23 @@ class TaskController extends Controller
             'employees' => ($task->responsible_id === $user->id || $user->hasRole('admin'))
                 ? User::role('employee')->get(['id', 'name'])
                 : [],
+            'queries' => $task->queries()
+                ->with(['raisedBy:id,name', 'directedTo:id,name'])
+                ->withCount('responses')
+                ->latest()
+                ->get()
+                ->map(fn ($q) => [
+                    'id' => $q->id,
+                    'subject' => $q->subject,
+                    'priority' => $q->priority,
+                    'status' => $q->status,
+                    'raised_by_name' => $q->raisedBy?->name ?? 'Unknown',
+                    'directed_to_name' => $q->directedTo?->name ?? null,
+                    'responses_count' => $q->responses_count,
+                    'created_at' => $q->created_at->diffForHumans(),
+                ]),
+            'open_queries_count' => $task->queries()->where('status', '!=', 'closed')->count(),
+            'task_participants' => $this->getTaskParticipants($task),
         ]);
     }
 
@@ -324,6 +373,8 @@ class TaskController extends Controller
             'remove_attachment_ids.*' => 'integer|exists:task_attachments,id',
         ]);
 
+        $oldResponsibleId = $task->responsible_id;
+
         $task->update([
             'service_id' => $validated['service_id'],
             'client_id' => $validated['client_id'],
@@ -334,6 +385,22 @@ class TaskController extends Controller
         ]);
 
         $task->collaborators()->sync($validated['collaborator_ids'] ?? []);
+
+        // Notify if responsible person changed
+        if ($oldResponsibleId !== (int) $validated['responsible_id']) {
+            $oldResponsible = User::find($oldResponsibleId);
+            $newResponsible = User::find($validated['responsible_id']);
+
+            if ($oldResponsible && $newResponsible) {
+                $task->load(['service:id,name']);
+                $recipients = collect([$oldResponsible, $newResponsible])
+                    ->filter(fn ($u) => $u->id !== auth()->id());
+
+                if ($recipients->isNotEmpty()) {
+                    Notification::send($recipients, new TaskReassigned($task, $oldResponsible, $newResponsible));
+                }
+            }
+        }
 
         // Remove attachments
         if (! empty($validated['remove_attachment_ids'])) {
@@ -375,7 +442,16 @@ class TaskController extends Controller
             return back()->with('error', 'Cannot move task to a previous status.');
         }
 
+        $oldStatus = $task->status;
         $task->update(['status' => $validated['status']]);
+
+        // Notify task participants of status change
+        $task->load(['service:id,name', 'client.user:id,name', 'responsible:id,name,email', 'collaborators:id,name,email', 'creator:id,name,email']);
+        $recipients = $this->getNotifiableUsers($task);
+
+        if ($recipients->isNotEmpty()) {
+            Notification::send($recipients, new TaskStatusChanged($task, $oldStatus, $validated['status']));
+        }
 
         return back()->with('success', 'Task status updated.');
     }
@@ -558,6 +634,14 @@ class TaskController extends Controller
             $successMessage = "Task completed. Follow-up Task #{$followUp->id} created (due {$validated['followup_due_date']}).";
         }
 
+        // Notify task participants of completion
+        $task->load(['service:id,name', 'client.user:id,name,email', 'responsible:id,name,email', 'collaborators:id,name,email', 'creator:id,name,email']);
+        $recipients = $this->getNotifiableUsers($task);
+
+        if ($recipients->isNotEmpty()) {
+            Notification::send($recipients, new TaskCompleted($task, $followUp ?? null));
+        }
+
         return redirect()->route('tasks.show', $task)->with('success', $successMessage);
     }
 
@@ -679,13 +763,80 @@ class TaskController extends Controller
         $user = auth()->user();
         abort_unless($task->created_by === $user->id || $user->hasRole('admin'), 403);
 
+        // Collect notification data before deletion
+        $task->load(['service:id,name', 'client.user:id,name,email', 'responsible:id,name,email', 'collaborators:id,name,email']);
+        $taskId = $task->id;
+        $serviceName = $task->service?->name ?? 'N/A';
+        $clientName = $task->client?->user?->name ?? 'N/A';
+        $deletedBy = $user->name;
+        $recipients = $this->getNotifiableUsers($task);
+
         foreach ($task->attachments as $att) {
             Storage::disk('public')->delete($att->file_path);
         }
 
         $task->delete();
 
+        // Notify after deletion
+        if ($recipients->isNotEmpty()) {
+            Notification::send($recipients, new TaskDeleted($taskId, $serviceName, $clientName, $deletedBy));
+        }
+
         return redirect()->route('tasks.index')->with('success', 'Task deleted successfully.');
+    }
+
+    private function getTaskParticipants(Task $task): array
+    {
+        $participants = collect();
+
+        if ($task->responsible) {
+            $participants->push(['id' => $task->responsible->id, 'name' => $task->responsible->name, 'role' => 'Responsible']);
+        }
+
+        foreach ($task->collaborators as $c) {
+            $participants->push(['id' => $c->id, 'name' => $c->name, 'role' => 'Collaborator']);
+        }
+
+        if ($task->client?->user) {
+            $participants->push(['id' => $task->client->user->id, 'name' => $task->client->user->name, 'role' => 'Client']);
+        }
+
+        // Add admins
+        $admins = User::role('admin')->get(['id', 'name']);
+        foreach ($admins as $admin) {
+            if (!$participants->contains('id', $admin->id)) {
+                $participants->push(['id' => $admin->id, 'name' => $admin->name, 'role' => 'Admin']);
+            }
+        }
+
+        return $participants->values()->all();
+    }
+
+    private function getNotifiableUsers(Task $task): \Illuminate\Support\Collection
+    {
+        $currentUserId = auth()->id();
+
+        $users = collect();
+
+        if ($task->responsible && $task->responsible_id !== $currentUserId) {
+            $users->push($task->responsible);
+        }
+
+        if ($task->creator && $task->created_by !== $currentUserId) {
+            $users->push($task->creator);
+        }
+
+        foreach ($task->collaborators as $collaborator) {
+            if ($collaborator->id !== $currentUserId) {
+                $users->push($collaborator);
+            }
+        }
+
+        if ($task->client?->user && $task->client->user->id !== $currentUserId) {
+            $users->push($task->client->user);
+        }
+
+        return $users->unique('id');
     }
 
     private function authorizeTaskView(Task $task): void
@@ -699,8 +850,9 @@ class TaskController extends Controller
         $isCreator = $task->created_by === $user->id;
         $isResponsible = $task->responsible_id === $user->id;
         $isCollaborator = $task->collaborators()->where('users.id', $user->id)->exists();
+        $isClient = $task->client && $task->client->user_id === $user->id;
 
-        if (! ($isCreator || $isResponsible || $isCollaborator)) {
+        if (! ($isCreator || $isResponsible || $isCollaborator || $isClient)) {
             abort(403, 'You do not have access to this task.');
         }
     }

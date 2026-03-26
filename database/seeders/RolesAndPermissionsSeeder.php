@@ -55,6 +55,7 @@ class RolesAndPermissionsSeeder extends Seeder
 
         $clientRole = Role::firstOrCreate(['name' => 'client']);
         $clientRole->syncPermissions([
+            'view tasks',
             'view dashboard',
             'view own profile',
             'edit own profile',

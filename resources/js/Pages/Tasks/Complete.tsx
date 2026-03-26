@@ -238,8 +238,8 @@ export default function Complete({ task, form_schema, draft_data, completion_sch
                     )}
 
                     <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
-                        {/* LEFT: Instructions + Progress (sticky) */}
-                        <div className="lg:col-span-4">
+                        {/* RIGHT: Task Info + Progress (sticky) */}
+                        <div className="lg:col-span-4 lg:order-2">
                             <div className="sticky top-24 space-y-4">
                                 {/* Task Info */}
                                 <div className="rounded-xl bg-white p-5 shadow-sm">
@@ -351,8 +351,8 @@ export default function Complete({ task, form_schema, draft_data, completion_sch
                             </div>
                         </div>
 
-                        {/* RIGHT: Form */}
-                        <div className="lg:col-span-8 space-y-6">
+                        {/* LEFT: Form */}
+                        <div className="lg:col-span-8 lg:order-1 space-y-6">
                             <div className="rounded-xl bg-white shadow-sm">
                                 <div className="border-b border-gray-200 px-6 py-5">
                                     <h3 className="text-lg font-semibold text-gray-900">{task.service_name} Form</h3>

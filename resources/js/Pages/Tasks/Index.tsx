@@ -49,6 +49,7 @@ interface Props extends PageProps {
         pending: number;
         in_progress: number;
         completed: number;
+        overdue: number;
     };
     can_create: boolean;
     board_tasks?: {
@@ -135,6 +136,7 @@ export default function Index({ tasks, filters, counts, can_create, board_tasks 
         { label: 'Pending', value: 'pending', countKey: 'pending' },
         { label: 'In Progress', value: 'in_progress', countKey: 'in_progress' },
         { label: 'Completed', value: 'completed', countKey: 'completed' },
+        { label: 'Overdue', value: 'overdue', countKey: 'overdue' },
     ];
 
     const pillCountBg: Record<string, string> = {
@@ -142,6 +144,7 @@ export default function Index({ tasks, filters, counts, can_create, board_tasks 
         pending: 'bg-amber-200/70',
         in_progress: 'bg-blue-200/70',
         completed: 'bg-emerald-200/70',
+        overdue: 'bg-red-200/70',
     };
 
     const columns: Column<TaskRow>[] = [
@@ -220,15 +223,17 @@ export default function Index({ tasks, filters, counts, can_create, board_tasks 
                             <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                         </svg>
                     </Link>
-                    <button
-                        onClick={() => openDeleteModal(row.id)}
-                        className="rounded-lg p-1.5 text-gray-400 transition hover:bg-red-50 hover:text-red-600"
-                        title="Delete task"
-                    >
-                        <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
-                        </svg>
-                    </button>
+                    {can_create && (
+                        <button
+                            onClick={() => openDeleteModal(row.id)}
+                            className="rounded-lg p-1.5 text-gray-400 transition hover:bg-red-50 hover:text-red-600"
+                            title="Delete task"
+                        >
+                            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
+                            </svg>
+                        </button>
+                    )}
                 </div>
             ),
         },
@@ -288,48 +293,64 @@ export default function Index({ tasks, filters, counts, can_create, board_tasks 
                     )}
 
                     {/* Stat Cards */}
-                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-                        {/* Pending */}
-                        <div className="rounded-xl border border-gray-200 border-b-4 border-b-amber-400 bg-white p-5 shadow-sm">
-                            <div className="flex items-center justify-between">
-                                <div>
-                                    <p className="text-sm font-medium text-gray-500">Pending</p>
-                                    <p className="mt-1 text-3xl font-bold text-gray-900">{counts.pending}</p>
-                                </div>
-                                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-amber-50">
-                                    <svg className="h-6 w-6 text-amber-500" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                    </svg>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* In Progress */}
-                        <div className="rounded-xl border border-gray-200 border-b-4 border-b-blue-400 bg-white p-5 shadow-sm">
-                            <div className="flex items-center justify-between">
-                                <div>
-                                    <p className="text-sm font-medium text-gray-500">In Progress</p>
-                                    <p className="mt-1 text-3xl font-bold text-gray-900">{counts.in_progress}</p>
-                                </div>
-                                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-blue-50">
-                                    <svg className="h-6 w-6 text-blue-500" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                                        <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182M2.985 19.644l3.181-3.183" />
-                                    </svg>
+                    <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+                        <div className="overflow-hidden rounded-xl bg-white shadow-sm">
+                            <div className="p-5">
+                                <div className="flex items-center">
+                                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-amber-50">
+                                        <svg className="h-6 w-6 text-amber-500" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                        </svg>
+                                    </div>
+                                    <div className="ml-4 min-w-0 flex-1">
+                                        <p className="text-sm font-medium text-gray-500 truncate">Pending</p>
+                                        <p className="text-2xl font-bold text-gray-900">{counts.pending}</p>
+                                    </div>
                                 </div>
                             </div>
                         </div>
-
-                        {/* Completed */}
-                        <div className="rounded-xl border border-gray-200 border-b-4 border-b-emerald-400 bg-white p-5 shadow-sm">
-                            <div className="flex items-center justify-between">
-                                <div>
-                                    <p className="text-sm font-medium text-gray-500">Completed</p>
-                                    <p className="mt-1 text-3xl font-bold text-gray-900">{counts.completed}</p>
+                        <div className="overflow-hidden rounded-xl bg-white shadow-sm">
+                            <div className="p-5">
+                                <div className="flex items-center">
+                                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-blue-50">
+                                        <svg className="h-6 w-6 text-blue-500" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182M2.985 19.644l3.181-3.183" />
+                                        </svg>
+                                    </div>
+                                    <div className="ml-4 min-w-0 flex-1">
+                                        <p className="text-sm font-medium text-gray-500 truncate">In Progress</p>
+                                        <p className="text-2xl font-bold text-gray-900">{counts.in_progress}</p>
+                                    </div>
                                 </div>
-                                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-50">
-                                    <svg className="h-6 w-6 text-emerald-500" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                                        <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                    </svg>
+                            </div>
+                        </div>
+                        <div className="overflow-hidden rounded-xl bg-white shadow-sm">
+                            <div className="p-5">
+                                <div className="flex items-center">
+                                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-emerald-50">
+                                        <svg className="h-6 w-6 text-emerald-500" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                        </svg>
+                                    </div>
+                                    <div className="ml-4 min-w-0 flex-1">
+                                        <p className="text-sm font-medium text-gray-500 truncate">Completed</p>
+                                        <p className="text-2xl font-bold text-gray-900">{counts.completed}</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div className="overflow-hidden rounded-xl bg-white shadow-sm">
+                            <div className="p-5">
+                                <div className="flex items-center">
+                                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-red-50">
+                                        <svg className="h-6 w-6 text-red-500" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+                                        </svg>
+                                    </div>
+                                    <div className="ml-4 min-w-0 flex-1">
+                                        <p className="text-sm font-medium text-gray-500 truncate">Overdue</p>
+                                        <p className="text-2xl font-bold text-gray-900">{counts.overdue}</p>
+                                    </div>
                                 </div>
                             </div>
                         </div>

@@ -69,12 +69,32 @@ interface Employee {
     name: string;
 }
 
+interface QueryItem {
+    id: number;
+    subject: string;
+    priority: string;
+    status: string;
+    raised_by_name: string;
+    directed_to_name: string | null;
+    responses_count: number;
+    created_at: string;
+}
+
+interface TaskParticipant {
+    id: number;
+    name: string;
+    role: string;
+}
+
 interface Props extends PageProps {
     task: TaskDetail;
     submission?: SubmissionData | null;
     form_schema?: FormField[];
     completion_schema?: FormField[];
     employees?: Employee[];
+    queries?: QueryItem[];
+    open_queries_count?: number;
+    task_participants?: TaskParticipant[];
 }
 
 const priorityColors: Record<TaskPriority, string> = {
@@ -112,10 +132,14 @@ function getInitials(name: string): string {
         .slice(0, 2);
 }
 
-export default function Show({ task, submission, form_schema, completion_schema, employees }: Props) {
+export default function Show({ task, submission, form_schema, completion_schema, employees, queries, open_queries_count, task_participants }: Props) {
     const { flash } = usePage<PageProps>().props;
     const commentForm = useForm({ body: '' });
-    const [activeTab, setActiveTab] = useState<'overview' | 'submission' | 'attachments'>('overview');
+    const [activeTab, setActiveTab] = useState<'overview' | 'submission' | 'attachments' | 'queries'>('overview');
+    const [showQueryForm, setShowQueryForm] = useState(false);
+    const [queryForm, setQueryForm] = useState({ subject: '', description: '', directed_to: '', priority: 'normal' });
+    const [queryErrors, setQueryErrors] = useState<Record<string, string>>({});
+    const [queryProcessing, setQueryProcessing] = useState(false);
     const [uploadFiles, setUploadFiles] = useState<File[]>([]);
     const [uploading, setUploading] = useState(false);
 
@@ -168,7 +192,22 @@ export default function Show({ task, submission, form_schema, completion_schema,
         { key: 'overview' as const, label: 'Overview' },
         { key: 'submission' as const, label: 'Form / Submission' },
         { key: 'attachments' as const, label: `Attachments (${task.attachments.length})` },
+        { key: 'queries' as const, label: `Queries${(open_queries_count ?? 0) > 0 ? ` (${open_queries_count})` : ''}` },
     ];
+
+    const submitQuery = () => {
+        setQueryProcessing(true);
+        router.post(route('tasks.queries.store', task.id), queryForm, {
+            onSuccess: () => {
+                setShowQueryForm(false);
+                setQueryForm({ subject: '', description: '', directed_to: '', priority: 'normal' });
+                setQueryErrors({});
+            },
+            onError: (errs) => setQueryErrors(errs),
+            onFinish: () => setQueryProcessing(false),
+            preserveScroll: true,
+        });
+    };
 
     return (
         <AuthenticatedLayout
@@ -663,6 +702,102 @@ export default function Show({ task, submission, form_schema, completion_schema,
                                                         e.target.value = '';
                                                     }}
                                                 />
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+
+                                {/* Tab: Queries */}
+                                {activeTab === 'queries' && (
+                                    <div className="p-6">
+                                        {/* Raise Query Button / Form */}
+                                        {!showQueryForm ? (
+                                            <button
+                                                onClick={() => setShowQueryForm(true)}
+                                                className="mb-4 inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-emerald-500"
+                                            >
+                                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="h-4 w-4"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
+                                                Raise Query
+                                            </button>
+                                        ) : (
+                                            <div className="mb-6 rounded-lg border border-gray-200 bg-gray-50 p-4 space-y-3">
+                                                <div>
+                                                    <label className="block text-sm font-medium text-gray-700">Subject *</label>
+                                                    <input type="text" value={queryForm.subject} onChange={(e) => setQueryForm({...queryForm, subject: e.target.value})} className="mt-1 block w-full rounded-lg border-gray-300 text-sm shadow-sm focus:border-emerald-500 focus:ring-emerald-500" placeholder="e.g., Trade license copy needed" />
+                                                    {queryErrors.subject && <p className="mt-1 text-xs text-red-600">{queryErrors.subject}</p>}
+                                                </div>
+                                                <div>
+                                                    <label className="block text-sm font-medium text-gray-700">Description *</label>
+                                                    <textarea value={queryForm.description} onChange={(e) => setQueryForm({...queryForm, description: e.target.value})} rows={3} className="mt-1 block w-full rounded-lg border-gray-300 text-sm shadow-sm focus:border-emerald-500 focus:ring-emerald-500" placeholder="Describe what you need..." />
+                                                    {queryErrors.description && <p className="mt-1 text-xs text-red-600">{queryErrors.description}</p>}
+                                                </div>
+                                                <div className="grid grid-cols-2 gap-3">
+                                                    <div>
+                                                        <label className="block text-sm font-medium text-gray-700">Directed To</label>
+                                                        <select value={queryForm.directed_to} onChange={(e) => setQueryForm({...queryForm, directed_to: e.target.value})} className="mt-1 block w-full rounded-lg border-gray-300 text-sm shadow-sm focus:border-emerald-500 focus:ring-emerald-500">
+                                                            <option value="">Anyone</option>
+                                                            {(task_participants ?? []).map((p) => (
+                                                                <option key={p.id} value={p.id}>{p.name} ({p.role})</option>
+                                                            ))}
+                                                        </select>
+                                                    </div>
+                                                    <div>
+                                                        <label className="block text-sm font-medium text-gray-700">Priority</label>
+                                                        <select value={queryForm.priority} onChange={(e) => setQueryForm({...queryForm, priority: e.target.value})} className="mt-1 block w-full rounded-lg border-gray-300 text-sm shadow-sm focus:border-emerald-500 focus:ring-emerald-500">
+                                                            <option value="normal">Normal</option>
+                                                            <option value="urgent">Urgent</option>
+                                                        </select>
+                                                    </div>
+                                                </div>
+                                                <div className="flex items-center gap-2 pt-1">
+                                                    <button onClick={submitQuery} disabled={queryProcessing} className="inline-flex items-center rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-emerald-500 disabled:opacity-50">
+                                                        {queryProcessing ? 'Submitting...' : 'Submit Query'}
+                                                    </button>
+                                                    <button onClick={() => { setShowQueryForm(false); setQueryErrors({}); }} className="text-sm text-gray-500 hover:text-gray-700">Cancel</button>
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {/* Query List */}
+                                        {queries && queries.length > 0 ? (
+                                            <div className="space-y-3">
+                                                {queries.map((q) => (
+                                                    <Link
+                                                        key={q.id}
+                                                        href={route('tasks.queries.show', [task.id, q.id])}
+                                                        className="block rounded-lg border border-gray-200 p-4 hover:bg-gray-50 transition"
+                                                    >
+                                                        <div className="flex items-start justify-between">
+                                                            <div className="min-w-0 flex-1">
+                                                                <div className="flex items-center gap-2">
+                                                                    <h4 className="text-sm font-medium text-gray-900 truncate">{q.subject}</h4>
+                                                                    {q.priority === 'urgent' && (
+                                                                        <span className="inline-flex rounded-full bg-red-100 px-2 py-0.5 text-[10px] font-medium text-red-700">Urgent</span>
+                                                                    )}
+                                                                </div>
+                                                                <p className="mt-1 text-xs text-gray-500">
+                                                                    Raised by {q.raised_by_name}
+                                                                    {q.directed_to_name && <> · To: {q.directed_to_name}</>}
+                                                                    {' · '}{q.created_at}
+                                                                    {q.responses_count > 0 && <> · {q.responses_count} {q.responses_count === 1 ? 'response' : 'responses'}</>}
+                                                                </p>
+                                                            </div>
+                                                            <span className={`ml-3 shrink-0 inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                                                                q.status === 'open' ? 'bg-amber-100 text-amber-800' :
+                                                                q.status === 'answered' ? 'bg-blue-100 text-blue-800' :
+                                                                'bg-green-100 text-green-800'
+                                                            }`}>
+                                                                {q.status.charAt(0).toUpperCase() + q.status.slice(1)}
+                                                            </span>
+                                                        </div>
+                                                    </Link>
+                                                ))}
+                                            </div>
+                                        ) : !showQueryForm && (
+                                            <div className="rounded-lg border-2 border-dashed border-gray-200 p-8 text-center">
+                                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="mx-auto h-10 w-10 text-gray-300"><path strokeLinecap="round" strokeLinejoin="round" d="M8.625 12a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H8.25m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H12m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 01-2.555-.337A5.972 5.972 0 015.41 20.97a5.969 5.969 0 01-.474-.065 4.48 4.48 0 00.978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25z" /></svg>
+                                                <p className="mt-2 text-sm font-medium text-gray-500">No queries yet</p>
+                                                <p className="text-xs text-gray-400">Raise a query to request information or documents.</p>
                                             </div>
                                         )}
                                     </div>

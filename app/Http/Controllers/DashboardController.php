@@ -7,6 +7,7 @@ use App\Models\Service;
 use App\Models\ServiceSubmission;
 use App\Models\Task;
 use App\Models\TaskComment;
+use App\Models\TaskQuery;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -21,7 +22,7 @@ class DashboardController extends Controller
         $role = $user->roles->first()?->name ?? 'client';
 
         $data = match ($role) {
-            'admin' => $this->adminDashboard(),
+            'admin' => $this->adminDashboard($user),
             'employee' => $this->employeeDashboard($user),
             default => $this->clientDashboard($user),
         };
@@ -29,7 +30,7 @@ class DashboardController extends Controller
         return Inertia::render('Dashboard', array_merge(['role' => $role], $data));
     }
 
-    private function adminDashboard(): array
+    private function adminDashboard(User $user): array
     {
         $today = Carbon::today();
 
@@ -159,6 +160,7 @@ class DashboardController extends Controller
             ],
             'recent_activity' => $recentActivity,
             'overdue_tasks' => $overdueTasks,
+            'pending_queries' => $this->pendingQueries($user),
         ];
     }
 
@@ -168,13 +170,23 @@ class DashboardController extends Controller
 
         $baseQuery = Task::where('responsible_id', $user->id);
 
+        $completed = (clone $baseQuery)->where('status', 'completed')->count();
+        $onTime = (clone $baseQuery)->where('status', 'completed')
+            ->whereRaw('DATE(updated_at) <= due_date')->count();
+        $avgDays = (clone $baseQuery)->where('status', 'completed')
+            ->selectRaw('AVG(DATEDIFF(updated_at, created_at)) as avg_days')
+            ->value('avg_days');
+
         $kpis = [
             'my_tasks' => (clone $baseQuery)->count(),
             'in_progress' => (clone $baseQuery)->where('status', 'in_progress')->count(),
-            'completed' => (clone $baseQuery)->where('status', 'completed')->count(),
+            'completed' => $completed,
             'overdue' => (clone $baseQuery)->where('status', '!=', 'completed')->where('due_date', '<', $today)->count(),
+            'on_time_rate' => $completed > 0 ? round(($onTime / $completed) * 100) : 0,
+            'avg_days' => $avgDays ? round($avgDays, 1) : 0,
         ];
 
+        // Status distribution (donut)
         $statusDistribution = Task::where('responsible_id', $user->id)
             ->selectRaw('status, count(*) as count')
             ->groupBy('status')
@@ -182,6 +194,46 @@ class DashboardController extends Controller
             ->map(fn ($count, $status) => ['name' => ucfirst(str_replace('_', ' ', $status)), 'value' => $count])
             ->values();
 
+        // Priority breakdown (bar)
+        $priorityDistribution = Task::where('responsible_id', $user->id)
+            ->selectRaw('priority, count(*) as total, SUM(CASE WHEN status = "completed" THEN 1 ELSE 0 END) as completed')
+            ->groupBy('priority')
+            ->get()
+            ->map(fn ($row) => [
+                'name' => ucfirst($row->priority),
+                'total' => $row->total,
+                'completed' => $row->completed,
+            ]);
+
+        // Monthly completion trend (last 6 months)
+        $sixMonthsAgo = Carbon::now()->subMonths(6)->startOfMonth();
+        $monthlyCompletions = Task::where('responsible_id', $user->id)
+            ->where('status', 'completed')
+            ->where('updated_at', '>=', $sixMonthsAgo)
+            ->selectRaw("DATE_FORMAT(updated_at, '%Y-%m') as month, count(*) as count")
+            ->groupBy('month')
+            ->pluck('count', 'month');
+
+        $completionTrend = collect();
+        for ($i = 5; $i >= 0; $i--) {
+            $month = Carbon::now()->subMonths($i);
+            $key = $month->format('Y-m');
+            $completionTrend->push([
+                'month' => $month->format('M'),
+                'count' => $monthlyCompletions[$key] ?? 0,
+            ]);
+        }
+
+        // On-time vs late (donut)
+        $lateCompleted = (clone $baseQuery)->where('status', 'completed')
+            ->whereRaw('DATE(updated_at) > due_date')->count();
+        $onTimeVsLate = collect();
+        if ($onTime > 0 || $lateCompleted > 0) {
+            $onTimeVsLate->push(['name' => 'On Time', 'value' => $onTime]);
+            $onTimeVsLate->push(['name' => 'Late', 'value' => $lateCompleted]);
+        }
+
+        // Upcoming tasks (next 7 days)
         $upcomingTasks = Task::where('responsible_id', $user->id)
             ->where('status', '!=', 'completed')
             ->where('due_date', '>=', $today)
@@ -197,6 +249,41 @@ class DashboardController extends Controller
                 'due_date' => $t->due_date->format('M d, Y'),
                 'priority' => $t->priority,
                 'status' => $t->status,
+            ]);
+
+        // Overdue tasks
+        $overdueTasks = Task::where('responsible_id', $user->id)
+            ->where('status', '!=', 'completed')
+            ->where('due_date', '<', $today)
+            ->with(['service:id,name', 'client.user:id,name'])
+            ->orderBy('due_date')
+            ->limit(10)
+            ->get()
+            ->map(fn (Task $t) => [
+                'id' => $t->id,
+                'service_name' => $t->service?->name ?? 'Unknown',
+                'client_name' => $t->client?->user?->name ?? 'Unknown',
+                'due_date' => $t->due_date->format('M d, Y'),
+                'days_overdue' => $t->due_date->diffInDays($today),
+                'priority' => $t->priority,
+            ]);
+
+        // Collaborator tasks (tasks where this user is a collaborator, not responsible)
+        $collaboratorTasks = Task::whereHas('collaborators', fn ($q) => $q->where('users.id', $user->id))
+            ->where('responsible_id', '!=', $user->id)
+            ->with(['service:id,name', 'client.user:id,name', 'responsible:id,name'])
+            ->latest()
+            ->limit(10)
+            ->get()
+            ->map(fn (Task $t) => [
+                'id' => $t->id,
+                'service_name' => $t->service?->name ?? 'Unknown',
+                'client_name' => $t->client?->user?->name ?? 'Unknown',
+                'responsible_name' => $t->responsible?->name ?? 'Unknown',
+                'status' => $t->status,
+                'due_date' => $t->due_date->format('M d, Y'),
+                'priority' => $t->priority,
+                'can_work' => $t->collaborators->where('id', $user->id)->first()?->pivot->can_work ?? false,
             ]);
 
         $recentActivity = TaskComment::whereHas('task', fn ($q) => $q->where('responsible_id', $user->id))
@@ -216,9 +303,15 @@ class DashboardController extends Controller
             'kpis' => $kpis,
             'charts' => [
                 'status_distribution' => $statusDistribution,
+                'priority_distribution' => $priorityDistribution,
+                'completion_trend' => $completionTrend,
+                'on_time_vs_late' => $onTimeVsLate,
             ],
             'upcoming_tasks' => $upcomingTasks,
+            'overdue_tasks' => $overdueTasks,
+            'collaborator_tasks' => $collaboratorTasks,
             'recent_activity' => $recentActivity,
+            'pending_queries' => $this->pendingQueries($user),
         ];
     }
 
@@ -286,6 +379,28 @@ class DashboardController extends Controller
             'charts' => ['status_distribution' => $statusDistribution],
             'service_progress' => $serviceProgress,
             'recent_activity' => $recentActivity,
+            'pending_queries' => $this->pendingQueries($user),
         ];
+    }
+
+    private function pendingQueries(User $user): array
+    {
+        return TaskQuery::where('directed_to', $user->id)
+            ->whereIn('status', ['open', 'answered'])
+            ->with(['task.service:id,name', 'raisedBy:id,name'])
+            ->latest()
+            ->limit(10)
+            ->get()
+            ->map(fn (TaskQuery $q) => [
+                'id' => $q->id,
+                'task_id' => $q->task_id,
+                'subject' => $q->subject,
+                'priority' => $q->priority,
+                'status' => $q->status,
+                'raised_by_name' => $q->raisedBy?->name ?? 'Unknown',
+                'service_name' => $q->task?->service?->name ?? 'Unknown',
+                'created_at' => $q->created_at->diffForHumans(),
+            ])
+            ->all();
     }
 }

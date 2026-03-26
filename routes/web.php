@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Admin\EmployeePerformanceController;
 use App\Http\Controllers\Admin\PermissionController;
 use App\Http\Controllers\Admin\RoleController;
 use App\Http\Controllers\Admin\ServiceController;
@@ -9,17 +10,13 @@ use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\Tasks\TaskAttachmentController;
 use App\Http\Controllers\Tasks\TaskCommentController;
 use App\Http\Controllers\Tasks\TaskController;
+use App\Http\Controllers\Tasks\TaskQueryController;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
 Route::get('/', function () {
-    return Inertia::render('Welcome', [
-        'canLogin' => Route::has('login'),
-        'canRegister' => Route::has('register'),
-        'laravelVersion' => Application::VERSION,
-        'phpVersion' => PHP_VERSION,
-    ]);
+    return redirect()->route('login');
 });
 
 Route::get('/dashboard', [DashboardController::class, 'index'])
@@ -40,6 +37,8 @@ Route::middleware(['auth', 'verified', 'role:admin'])->prefix('admin')->name('ad
     Route::resource('services', ServiceController::class)->except(['show']);
     Route::get('services/{service}/submissions', [ServiceController::class, 'submissions'])->name('services.submissions');
     Route::get('services/{service}/submissions/{submission}', [ServiceController::class, 'showSubmission'])->name('services.submissions.show');
+    Route::get('performance', [EmployeePerformanceController::class, 'index'])->name('performance.index');
+    Route::get('performance/{user}', [EmployeePerformanceController::class, 'show'])->name('performance.show');
 });
 
 // Task routes (accessible by auth users — permission gates in controllers)
@@ -65,6 +64,12 @@ Route::middleware(['auth', 'verified'])->prefix('tasks')->name('tasks.')->group(
 
     Route::post('/{task}/comments', [TaskCommentController::class, 'store'])->name('comments.store');
     Route::delete('/{task}/comments/{comment}', [TaskCommentController::class, 'destroy'])->name('comments.destroy');
+
+    Route::post('/{task}/queries', [TaskQueryController::class, 'store'])->name('queries.store');
+    Route::get('/{task}/queries/{query}', [TaskQueryController::class, 'show'])->name('queries.show');
+    Route::post('/{task}/queries/{query}/respond', [TaskQueryController::class, 'respond'])->name('queries.respond');
+    Route::patch('/{task}/queries/{query}/close', [TaskQueryController::class, 'close'])->name('queries.close');
+    Route::patch('/{task}/queries/{query}/reopen', [TaskQueryController::class, 'reopen'])->name('queries.reopen');
 });
 
 require __DIR__.'/auth.php';
