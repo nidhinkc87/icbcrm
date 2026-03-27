@@ -1,3 +1,47 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* Theme color for native form controls */
+input[type="date"],
+input[type="datetime-local"],
+input[type="time"],
+input[type="month"],
+input[type="week"],
+input[type="checkbox"],
+input[type="radio"] {
+    accent-color: #10b981;
+}
+
+/* Style the calendar picker icon to match emerald theme */
+input[type="date"]::-webkit-calendar-picker-indicator,
+input[type="datetime-local"]::-webkit-calendar-picker-indicator {
+    cursor: pointer;
+    border-radius: 4px;
+    padding: 4px;
+    transition: background-color 0.15s;
+}
+
+input[type="date"]::-webkit-calendar-picker-indicator:hover,
+input[type="datetime-local"]::-webkit-calendar-picker-indicator:hover {
+    background-color: #d1fae5;
+}
+
+/* Override Chromium date picker popup theme via color-scheme + accent */
+::-webkit-datetime-edit-fields-wrapper {
+    padding: 0;
+}
+
+::-webkit-datetime-edit-text {
+    color: #6b7280;
+    padding: 0 2px;
+}
+
+::-webkit-datetime-edit-day-field:focus,
+::-webkit-datetime-edit-month-field:focus,
+::-webkit-datetime-edit-year-field:focus {
+    background-color: #d1fae5;
+    color: #065f46;
+    outline: none;
+    border-radius: 2px;
+}

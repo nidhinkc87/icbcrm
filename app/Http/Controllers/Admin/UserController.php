@@ -98,9 +98,41 @@ class UserController extends Controller
 
         if ($type === 'employee') {
             $rules['phone'] = 'nullable|string|max:20';
+            $rules['personal_email'] = 'nullable|string|email|max:255';
+            $rules['contact_number'] = 'nullable|string|max:20';
             $rules['department'] = 'nullable|string|max:255';
             $rules['designation'] = 'nullable|string|max:255';
             $rules['date_of_joining'] = 'nullable|date';
+            $rules['emergency_contact_name'] = 'nullable|string|max:255';
+            $rules['emergency_contact_number'] = 'nullable|string|max:20';
+            $rules['emergency_contact_relationship'] = 'nullable|string|max:255';
+            $rules['local_address_line'] = 'nullable|string|max:255';
+            $rules['local_city'] = 'nullable|string|max:255';
+            $rules['local_emirate'] = 'nullable|string|max:255';
+            $rules['local_po_box'] = 'nullable|string|max:50';
+            $rules['home_address_line'] = 'nullable|string|max:255';
+            $rules['home_city'] = 'nullable|string|max:255';
+            $rules['home_state'] = 'nullable|string|max:255';
+            $rules['home_country'] = 'nullable|string|max:255';
+            $rules['home_postal_code'] = 'nullable|string|max:50';
+            $rules['home_contact_number'] = 'nullable|string|max:20';
+            $rules['photo'] = 'nullable|file|mimes:jpg,jpeg,png|max:10240';
+            $rules['passport'] = 'nullable|file|mimes:pdf,jpg,jpeg,png|max:10240';
+            $rules['emirates_id'] = 'nullable|file|mimes:pdf,jpg,jpeg,png|max:10240';
+            $rules['visa'] = 'nullable|file|mimes:pdf,jpg,jpeg,png|max:10240';
+            $rules['driving_id'] = 'nullable|file|mimes:pdf,jpg,jpeg,png|max:10240';
+            $rules['insurance'] = 'nullable|file|mimes:pdf,jpg,jpeg,png|max:10240';
+            $rules['education_certificates'] = 'nullable|array|max:10';
+            $rules['education_certificates.*'] = 'file|mimes:pdf,jpg,jpeg,png|max:10240';
+            $rules['offer_letter'] = 'nullable|file|mimes:pdf,jpg,jpeg,png|max:10240';
+            $rules['labour_contract'] = 'nullable|file|mimes:pdf,jpg,jpeg,png|max:10240';
+            $rules['nda'] = 'nullable|file|mimes:pdf,jpg,jpeg,png|max:10240';
+            $rules['handbook'] = 'nullable|file|mimes:pdf,jpg,jpeg,png|max:10240';
+            $rules['personal_goal'] = 'nullable|array|max:5';
+            $rules['personal_goal.*'] = 'file|mimes:pdf,jpg,jpeg,png|max:10240';
+            $rules['professional_goal'] = 'nullable|array|max:5';
+            $rules['professional_goal.*'] = 'file|mimes:pdf,jpg,jpeg,png|max:10240';
+            $rules['submission_date'] = 'nullable|date';
         }
 
         if ($type === 'client') {
@@ -142,12 +174,22 @@ class UserController extends Controller
         $user->syncRoles(array_unique($roles));
 
         if ($type === 'employee') {
-            $user->employee()->create([
+            $employee = $user->employee()->create([
                 'phone' => $validated['phone'] ?? null,
+                'personal_email' => $validated['personal_email'] ?? null,
+                'contact_number' => $validated['contact_number'] ?? null,
                 'department' => $validated['department'] ?? null,
                 'designation' => $validated['designation'] ?? null,
                 'date_of_joining' => $validated['date_of_joining'] ?? null,
+                'emergency_contact_name' => $validated['emergency_contact_name'] ?? null,
+                'emergency_contact_number' => $validated['emergency_contact_number'] ?? null,
+                'emergency_contact_relationship' => $validated['emergency_contact_relationship'] ?? null,
+                'local_address' => $validated['local_address'] ?? null,
+                'home_country_address' => $validated['home_country_address'] ?? null,
+                'submission_date' => $validated['submission_date'] ?? null,
             ]);
+
+            $this->storeEmployeeDocuments($employee, $request);
         }
 
         if ($type === 'client') {
@@ -207,15 +249,46 @@ class UserController extends Controller
             ]);
         }
 
+        $emp = $user->employee;
+
         return Inertia::render('Admin/Users/ShowEmployee', [
             'user' => [
                 'id' => $user->id,
                 'name' => $user->name,
                 'email' => $user->email,
-                'phone' => $user->employee?->phone,
-                'department' => $user->employee?->department,
-                'designation' => $user->employee?->designation,
-                'date_of_joining' => $user->employee?->date_of_joining?->format('M d, Y'),
+                'phone' => $emp?->phone,
+                'personal_email' => $emp?->personal_email,
+                'contact_number' => $emp?->contact_number,
+                'department' => $emp?->department,
+                'designation' => $emp?->designation,
+                'date_of_joining' => $emp?->date_of_joining?->format('M d, Y'),
+                'emergency_contact_name' => $emp?->emergency_contact_name,
+                'emergency_contact_number' => $emp?->emergency_contact_number,
+                'emergency_contact_relationship' => $emp?->emergency_contact_relationship,
+                'local_address_line' => $emp?->local_address_line,
+                'local_city' => $emp?->local_city,
+                'local_emirate' => $emp?->local_emirate,
+                'local_po_box' => $emp?->local_po_box,
+                'home_address_line' => $emp?->home_address_line,
+                'home_city' => $emp?->home_city,
+                'home_state' => $emp?->home_state,
+                'home_country' => $emp?->home_country,
+                'home_postal_code' => $emp?->home_postal_code,
+                'home_contact_number' => $emp?->home_contact_number,
+                'photo' => $emp?->photo ? Storage::disk('public')->url($emp->photo) : null,
+                'passport' => $emp?->passport ? Storage::disk('public')->url($emp->passport) : null,
+                'emirates_id' => $emp?->emirates_id ? Storage::disk('public')->url($emp->emirates_id) : null,
+                'visa' => $emp?->visa ? Storage::disk('public')->url($emp->visa) : null,
+                'driving_id' => $emp?->driving_id ? Storage::disk('public')->url($emp->driving_id) : null,
+                'insurance' => $emp?->insurance ? Storage::disk('public')->url($emp->insurance) : null,
+                'education_certificates' => collect($emp?->education_certificates ?? [])->map(fn ($p) => Storage::disk('public')->url($p)),
+                'offer_letter' => $emp?->offer_letter ? Storage::disk('public')->url($emp->offer_letter) : null,
+                'labour_contract' => $emp?->labour_contract ? Storage::disk('public')->url($emp->labour_contract) : null,
+                'nda' => $emp?->nda ? Storage::disk('public')->url($emp->nda) : null,
+                'handbook' => $emp?->handbook ? Storage::disk('public')->url($emp->handbook) : null,
+                'personal_goal' => collect($emp?->personal_goal ?? [])->map(fn ($p) => Storage::disk('public')->url($p)),
+                'professional_goal' => collect($emp?->professional_goal ?? [])->map(fn ($p) => Storage::disk('public')->url($p)),
+                'submission_date' => $emp?->submission_date?->format('M d, Y'),
                 'created_at' => $user->created_at->format('M d, Y'),
             ],
         ]);
@@ -261,6 +334,8 @@ class UserController extends Controller
             ]);
         }
 
+        $emp = $user->employee;
+
         return Inertia::render('Admin/Users/EditEmployee', [
             'allRoles' => $allRoles,
             'userRoles' => $userRoles,
@@ -268,10 +343,39 @@ class UserController extends Controller
                 'id' => $user->id,
                 'name' => $user->name,
                 'email' => $user->email,
-                'phone' => $user->employee?->phone,
-                'department' => $user->employee?->department,
-                'designation' => $user->employee?->designation,
-                'date_of_joining' => $user->employee?->date_of_joining?->format('Y-m-d'),
+                'phone' => $emp?->phone,
+                'personal_email' => $emp?->personal_email,
+                'contact_number' => $emp?->contact_number,
+                'department' => $emp?->department,
+                'designation' => $emp?->designation,
+                'date_of_joining' => $emp?->date_of_joining?->format('Y-m-d'),
+                'emergency_contact_name' => $emp?->emergency_contact_name,
+                'emergency_contact_number' => $emp?->emergency_contact_number,
+                'emergency_contact_relationship' => $emp?->emergency_contact_relationship,
+                'local_address_line' => $emp?->local_address_line,
+                'local_city' => $emp?->local_city,
+                'local_emirate' => $emp?->local_emirate,
+                'local_po_box' => $emp?->local_po_box,
+                'home_address_line' => $emp?->home_address_line,
+                'home_city' => $emp?->home_city,
+                'home_state' => $emp?->home_state,
+                'home_country' => $emp?->home_country,
+                'home_postal_code' => $emp?->home_postal_code,
+                'home_contact_number' => $emp?->home_contact_number,
+                'photo_url' => $emp?->photo ? Storage::disk('public')->url($emp->photo) : null,
+                'passport_url' => $emp?->passport ? Storage::disk('public')->url($emp->passport) : null,
+                'emirates_id_url' => $emp?->emirates_id ? Storage::disk('public')->url($emp->emirates_id) : null,
+                'visa_url' => $emp?->visa ? Storage::disk('public')->url($emp->visa) : null,
+                'driving_id_url' => $emp?->driving_id ? Storage::disk('public')->url($emp->driving_id) : null,
+                'insurance_url' => $emp?->insurance ? Storage::disk('public')->url($emp->insurance) : null,
+                'education_certificates_urls' => collect($emp?->education_certificates ?? [])->map(fn ($p) => Storage::disk('public')->url($p)),
+                'offer_letter_url' => $emp?->offer_letter ? Storage::disk('public')->url($emp->offer_letter) : null,
+                'labour_contract_url' => $emp?->labour_contract ? Storage::disk('public')->url($emp->labour_contract) : null,
+                'nda_url' => $emp?->nda ? Storage::disk('public')->url($emp->nda) : null,
+                'handbook_url' => $emp?->handbook ? Storage::disk('public')->url($emp->handbook) : null,
+                'personal_goal_urls' => collect($emp?->personal_goal ?? [])->map(fn ($p) => Storage::disk('public')->url($p)),
+                'professional_goal_urls' => collect($emp?->professional_goal ?? [])->map(fn ($p) => Storage::disk('public')->url($p)),
+                'submission_date' => $emp?->submission_date?->format('Y-m-d'),
             ],
         ]);
     }
@@ -289,9 +393,41 @@ class UserController extends Controller
 
         if ($role === 'employee') {
             $rules['phone'] = 'nullable|string|max:20';
+            $rules['personal_email'] = 'nullable|string|email|max:255';
+            $rules['contact_number'] = 'nullable|string|max:20';
             $rules['department'] = 'nullable|string|max:255';
             $rules['designation'] = 'nullable|string|max:255';
             $rules['date_of_joining'] = 'nullable|date';
+            $rules['emergency_contact_name'] = 'nullable|string|max:255';
+            $rules['emergency_contact_number'] = 'nullable|string|max:20';
+            $rules['emergency_contact_relationship'] = 'nullable|string|max:255';
+            $rules['local_address_line'] = 'nullable|string|max:255';
+            $rules['local_city'] = 'nullable|string|max:255';
+            $rules['local_emirate'] = 'nullable|string|max:255';
+            $rules['local_po_box'] = 'nullable|string|max:50';
+            $rules['home_address_line'] = 'nullable|string|max:255';
+            $rules['home_city'] = 'nullable|string|max:255';
+            $rules['home_state'] = 'nullable|string|max:255';
+            $rules['home_country'] = 'nullable|string|max:255';
+            $rules['home_postal_code'] = 'nullable|string|max:50';
+            $rules['home_contact_number'] = 'nullable|string|max:20';
+            $rules['photo'] = 'nullable|file|mimes:jpg,jpeg,png|max:10240';
+            $rules['passport'] = 'nullable|file|mimes:pdf,jpg,jpeg,png|max:10240';
+            $rules['emirates_id'] = 'nullable|file|mimes:pdf,jpg,jpeg,png|max:10240';
+            $rules['visa'] = 'nullable|file|mimes:pdf,jpg,jpeg,png|max:10240';
+            $rules['driving_id'] = 'nullable|file|mimes:pdf,jpg,jpeg,png|max:10240';
+            $rules['insurance'] = 'nullable|file|mimes:pdf,jpg,jpeg,png|max:10240';
+            $rules['education_certificates'] = 'nullable|array|max:10';
+            $rules['education_certificates.*'] = 'file|mimes:pdf,jpg,jpeg,png|max:10240';
+            $rules['offer_letter'] = 'nullable|file|mimes:pdf,jpg,jpeg,png|max:10240';
+            $rules['labour_contract'] = 'nullable|file|mimes:pdf,jpg,jpeg,png|max:10240';
+            $rules['nda'] = 'nullable|file|mimes:pdf,jpg,jpeg,png|max:10240';
+            $rules['handbook'] = 'nullable|file|mimes:pdf,jpg,jpeg,png|max:10240';
+            $rules['personal_goal'] = 'nullable|array|max:5';
+            $rules['personal_goal.*'] = 'file|mimes:pdf,jpg,jpeg,png|max:10240';
+            $rules['professional_goal'] = 'nullable|array|max:5';
+            $rules['professional_goal.*'] = 'file|mimes:pdf,jpg,jpeg,png|max:10240';
+            $rules['submission_date'] = 'nullable|date';
         }
 
         if ($role === 'client') {
@@ -330,15 +466,33 @@ class UserController extends Controller
         $user->syncRoles(array_unique($newRoles));
 
         if ($role === 'employee') {
-            $user->employee()->updateOrCreate(
+            $employee = $user->employee()->updateOrCreate(
                 ['user_id' => $user->id],
                 [
                     'phone' => $validated['phone'] ?? null,
+                    'personal_email' => $validated['personal_email'] ?? null,
+                    'contact_number' => $validated['contact_number'] ?? null,
                     'department' => $validated['department'] ?? null,
                     'designation' => $validated['designation'] ?? null,
                     'date_of_joining' => $validated['date_of_joining'] ?? null,
+                    'emergency_contact_name' => $validated['emergency_contact_name'] ?? null,
+                    'emergency_contact_number' => $validated['emergency_contact_number'] ?? null,
+                    'emergency_contact_relationship' => $validated['emergency_contact_relationship'] ?? null,
+                    'local_address_line' => $validated['local_address_line'] ?? null,
+                    'local_city' => $validated['local_city'] ?? null,
+                    'local_emirate' => $validated['local_emirate'] ?? null,
+                    'local_po_box' => $validated['local_po_box'] ?? null,
+                    'home_address_line' => $validated['home_address_line'] ?? null,
+                    'home_city' => $validated['home_city'] ?? null,
+                    'home_state' => $validated['home_state'] ?? null,
+                    'home_country' => $validated['home_country'] ?? null,
+                    'home_postal_code' => $validated['home_postal_code'] ?? null,
+                    'home_contact_number' => $validated['home_contact_number'] ?? null,
+                    'submission_date' => $validated['submission_date'] ?? null,
                 ]
             );
+
+            $this->storeEmployeeDocuments($employee, $request);
         }
 
         if ($role === 'client') {
@@ -421,6 +575,41 @@ class UserController extends Controller
 
         return redirect()->route('admin.users.index')
             ->with('success', 'User deleted successfully.');
+    }
+
+    private function storeEmployeeDocuments($employee, Request $request): void
+    {
+        $storagePath = "employee-documents/{$employee->id}";
+
+        // Single-file fields
+        $singleFields = ['photo', 'passport', 'emirates_id', 'visa', 'driving_id', 'insurance', 'offer_letter', 'labour_contract', 'nda', 'handbook'];
+        foreach ($singleFields as $field) {
+            if ($request->hasFile($field)) {
+                // Delete old file if exists
+                if ($employee->$field) {
+                    Storage::disk('public')->delete($employee->$field);
+                }
+                $employee->$field = $request->file($field)->store($storagePath, 'public');
+            }
+        }
+
+        // Multi-file fields (replace all on upload)
+        $multiFields = ['education_certificates', 'personal_goal', 'professional_goal'];
+        foreach ($multiFields as $field) {
+            if ($request->hasFile($field)) {
+                // Delete old files
+                foreach ($employee->$field ?? [] as $oldPath) {
+                    Storage::disk('public')->delete($oldPath);
+                }
+                $paths = [];
+                foreach ($request->file($field) as $file) {
+                    $paths[] = $file->store($storagePath, 'public');
+                }
+                $employee->$field = $paths;
+            }
+        }
+
+        $employee->save();
     }
 
     private function storeClientDocuments($client, Request $request, array $validated): void
