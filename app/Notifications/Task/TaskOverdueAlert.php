@@ -19,7 +19,7 @@ class TaskOverdueAlert extends Notification implements ShouldQueue
 
     public function via(object $notifiable): array
     {
-        return ['mail'];
+        return ['mail', 'database'];
     }
 
     public function toMail(object $notifiable): MailMessage
@@ -59,5 +59,17 @@ class TaskOverdueAlert extends Notification implements ShouldQueue
             ->line("- **Days Overdue:** {$dayLabel}")
             ->action('View Task', $url)
             ->salutation("Regards,\n{$appName}");
+    }
+
+    public function toArray(object $notifiable): array
+    {
+        $dayLabel = $this->daysOverdue === 1 ? '1 day' : "{$this->daysOverdue} days";
+        return [
+            'type' => 'task_overdue',
+            'title' => "Task Overdue ({$dayLabel})",
+            'message' => "Task #{$this->task->id} ({$this->task->service?->name}) is {$dayLabel} overdue",
+            'url' => route('tasks.show', $this->task->id),
+            'task_id' => $this->task->id,
+        ];
     }
 }

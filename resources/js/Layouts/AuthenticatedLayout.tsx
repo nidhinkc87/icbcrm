@@ -1,4 +1,5 @@
 import Dropdown from '@/Components/Dropdown';
+import NotificationBell from '@/Components/NotificationBell';
 import SidebarLink from '@/Components/SidebarLink';
 import { Link, usePage } from '@inertiajs/react';
 import { PropsWithChildren, ReactNode, useEffect, useState } from 'react';
@@ -253,8 +254,13 @@ export default function Authenticated({
                             {header}
                         </div>
 
-                        {/* Desktop user dropdown */}
+                        {/* Desktop notifications + user dropdown */}
                         <div className="hidden items-center gap-x-4 lg:flex lg:gap-x-6">
+                            <NotificationBell />
+
+                            {/* Separator */}
+                            <div className="h-6 w-px bg-gray-200" />
+
                             <Dropdown>
                                 <Dropdown.Trigger>
                                     <span className="inline-flex rounded-md">

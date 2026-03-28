@@ -20,7 +20,7 @@ class TaskDeleted extends Notification implements ShouldQueue
 
     public function via(object $notifiable): array
     {
-        return ['mail'];
+        return ['mail', 'database'];
     }
 
     public function toMail(object $notifiable): MailMessage
@@ -40,5 +40,15 @@ class TaskDeleted extends Notification implements ShouldQueue
             ->line("This task and its associated data are no longer available. If you believe this was done in error, please contact your administrator.")
             ->action('Go to Tasks', route('tasks.index'))
             ->salutation("Regards,\n{$appName}");
+    }
+
+    public function toArray(object $notifiable): array
+    {
+        return [
+            'type' => 'task_deleted',
+            'title' => 'Task Deleted',
+            'message' => "Task #{$this->taskId} ({$this->serviceName}) was deleted by {$this->deletedBy}",
+            'url' => route('tasks.index'),
+        ];
     }
 }

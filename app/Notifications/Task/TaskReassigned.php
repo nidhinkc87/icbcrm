@@ -21,7 +21,7 @@ class TaskReassigned extends Notification implements ShouldQueue
 
     public function via(object $notifiable): array
     {
-        return ['mail'];
+        return ['mail', 'database'];
     }
 
     public function toMail(object $notifiable): MailMessage
@@ -57,5 +57,17 @@ class TaskReassigned extends Notification implements ShouldQueue
             ->line("- **Due Date:** " . $this->task->due_date->format('M d, Y'))
             ->action('View Task', $url)
             ->salutation("Regards,\n{$appName}");
+    }
+
+    public function toArray(object $notifiable): array
+    {
+        $isNew = $notifiable->id === $this->newResponsible->id;
+        return [
+            'type' => 'task_reassigned',
+            'title' => $isNew ? 'Task Reassigned to You' : 'Task Reassigned',
+            'message' => "Task #{$this->task->id} reassigned from {$this->oldResponsible->name} to {$this->newResponsible->name}",
+            'url' => route('tasks.show', $this->task->id),
+            'task_id' => $this->task->id,
+        ];
     }
 }

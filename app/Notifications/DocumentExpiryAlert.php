@@ -25,7 +25,7 @@ class DocumentExpiryAlert extends Notification implements ShouldQueue
 
     public function via(object $notifiable): array
     {
-        return ['mail'];
+        return ['mail', 'database'];
     }
 
     public function toMail(object $notifiable): MailMessage
@@ -79,5 +79,20 @@ class DocumentExpiryAlert extends Notification implements ShouldQueue
         }
 
         return $message->salutation("Regards,\n{$appName}");
+    }
+
+    public function toArray(object $notifiable): array
+    {
+        $customerName = $this->customer->user?->name ?? 'Unknown';
+        $docTypeName = $this->document->documentType?->name ?? 'Document';
+        $isExpired = $this->document->expiry_date->isPast();
+
+        return [
+            'type' => 'document_expiry',
+            'title' => $isExpired ? "{$docTypeName} Expired" : "{$docTypeName} Expiring Soon",
+            'message' => "{$docTypeName} for {$customerName} — {$this->daysLabel}",
+            'url' => $this->task ? route('tasks.show', $this->task->id) : route('admin.users.show', $this->customer->user_id),
+            'is_urgent' => $isExpired,
+        ];
     }
 }

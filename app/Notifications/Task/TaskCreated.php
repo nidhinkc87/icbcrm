@@ -18,7 +18,7 @@ class TaskCreated extends Notification implements ShouldQueue
 
     public function via(object $notifiable): array
     {
-        return ['mail'];
+        return ['mail', 'database'];
     }
 
     public function toMail(object $notifiable): MailMessage
@@ -56,5 +56,16 @@ class TaskCreated extends Notification implements ShouldQueue
             ->action('View Task', $url)
             ->line("Please review the task details and begin work as needed.")
             ->salutation("Regards,\n{$appName}");
+    }
+
+    public function toArray(object $notifiable): array
+    {
+        return [
+            'type' => 'task_created',
+            'title' => 'New Task Assigned',
+            'message' => "Task #{$this->task->id} ({$this->task->service?->name}) assigned by {$this->task->creator?->name}",
+            'url' => route('tasks.show', $this->task->id),
+            'task_id' => $this->task->id,
+        ];
     }
 }

@@ -19,7 +19,7 @@ class TaskDueDateReminder extends Notification implements ShouldQueue
 
     public function via(object $notifiable): array
     {
-        return ['mail'];
+        return ['mail', 'database'];
     }
 
     public function toMail(object $notifiable): MailMessage
@@ -47,5 +47,17 @@ class TaskDueDateReminder extends Notification implements ShouldQueue
             ->action('View Task', $url)
             ->line("Please ensure this task is completed before the due date.")
             ->salutation("Regards,\n{$appName}");
+    }
+
+    public function toArray(object $notifiable): array
+    {
+        $urgency = $this->daysRemaining <= 1 ? 'tomorrow' : "in {$this->daysRemaining} days";
+        return [
+            'type' => 'task_due_reminder',
+            'title' => "Task Due {$urgency}",
+            'message' => "Task #{$this->task->id} ({$this->task->service?->name}) is due {$urgency}",
+            'url' => route('tasks.show', $this->task->id),
+            'task_id' => $this->task->id,
+        ];
     }
 }

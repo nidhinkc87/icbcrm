@@ -19,7 +19,7 @@ class TaskCompleted extends Notification implements ShouldQueue
 
     public function via(object $notifiable): array
     {
-        return ['mail'];
+        return ['mail', 'database'];
     }
 
     public function toMail(object $notifiable): MailMessage
@@ -55,5 +55,16 @@ class TaskCompleted extends Notification implements ShouldQueue
         }
 
         return $message->salutation("Regards,\n{$appName}");
+    }
+
+    public function toArray(object $notifiable): array
+    {
+        return [
+            'type' => 'task_completed',
+            'title' => 'Task Completed',
+            'message' => "Task #{$this->task->id} ({$this->task->service?->name}) completed by " . (auth()->user()?->name ?? 'System'),
+            'url' => route('tasks.show', $this->task->id),
+            'task_id' => $this->task->id,
+        ];
     }
 }

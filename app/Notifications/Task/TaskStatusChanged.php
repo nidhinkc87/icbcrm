@@ -20,7 +20,7 @@ class TaskStatusChanged extends Notification implements ShouldQueue
 
     public function via(object $notifiable): array
     {
-        return ['mail'];
+        return ['mail', 'database'];
     }
 
     public function toMail(object $notifiable): MailMessage
@@ -48,5 +48,17 @@ class TaskStatusChanged extends Notification implements ShouldQueue
             ->line("- **Due Date:** " . $this->task->due_date->format('M d, Y'))
             ->action('View Task', $url)
             ->salutation("Regards,\n{$appName}");
+    }
+
+    public function toArray(object $notifiable): array
+    {
+        $newLabel = ucfirst(str_replace('_', ' ', $this->newStatus));
+        return [
+            'type' => 'task_status_changed',
+            'title' => "Task Status: {$newLabel}",
+            'message' => "Task #{$this->task->id} ({$this->task->service?->name}) status changed to {$newLabel}",
+            'url' => route('tasks.show', $this->task->id),
+            'task_id' => $this->task->id,
+        ];
     }
 }
