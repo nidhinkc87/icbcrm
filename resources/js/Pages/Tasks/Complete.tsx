@@ -18,12 +18,25 @@ interface TaskSummary {
     priority: string;
 }
 
+interface LinkedDocument {
+    id: number;
+    document_type_name: string;
+    current_value: string | null;
+    current_file_url: string | null;
+    current_issue_date: string | null;
+    current_expiry_date: string | null;
+    has_expiry: boolean;
+    has_file: boolean;
+    has_value: boolean;
+}
+
 interface Props extends PageProps {
     task: TaskSummary;
     form_schema: FormField[];
     draft_data: Record<string, any>;
     completion_schema: FormField[];
     draft_completion_data: Record<string, any>;
+    linked_document?: LinkedDocument | null;
 }
 
 const priorityColors: Record<string, string> = {
@@ -33,7 +46,7 @@ const priorityColors: Record<string, string> = {
     urgent: 'bg-red-100 text-red-700',
 };
 
-export default function Complete({ task, form_schema, draft_data, completion_schema, draft_completion_data }: Props) {
+export default function Complete({ task, form_schema, draft_data, completion_schema, draft_completion_data, linked_document }: Props) {
     const { flash } = usePage<PageProps>().props;
     const [formData, setFormData] = useState<Record<string, any>>(() => {
         const initial: Record<string, any> = {};
@@ -63,6 +76,12 @@ export default function Complete({ task, form_schema, draft_data, completion_sch
     const [processing, setProcessing] = useState(false);
     const [savingDraft, setSavingDraft] = useState(false);
     const [draftSavedAt, setDraftSavedAt] = useState<string | null>(null);
+    const [docUpdate, setDocUpdate] = useState({
+        value: linked_document?.current_value ?? '',
+        issue_date: linked_document?.current_issue_date ?? '',
+        expiry_date: linked_document?.current_expiry_date ?? '',
+    });
+    const [docUpdateFile, setDocUpdateFile] = useState<File | null>(null);
     const [followupDueDate, setFollowupDueDate] = useState('');
     const [followupStartDate, setFollowupStartDate] = useState('');
     const [followupNotes, setFollowupNotes] = useState('');
@@ -122,6 +141,15 @@ export default function Complete({ task, form_schema, draft_data, completion_sch
         if (followupDueDate) data.append('followup_due_date', followupDueDate);
         if (followupStartDate) data.append('followup_start_date', followupStartDate);
         if (followupNotes) data.append('followup_notes', followupNotes);
+
+        // Linked document update
+        if (linked_document) {
+            if (docUpdate.value) data.append('doc_update_value', docUpdate.value);
+            if (docUpdateFile) data.append('doc_update_file', docUpdateFile);
+            if (docUpdate.issue_date) data.append('doc_update_issue_date', docUpdate.issue_date);
+            if (docUpdate.expiry_date) data.append('doc_update_expiry_date', docUpdate.expiry_date);
+        }
+
         return data;
     };
 
@@ -403,6 +431,77 @@ export default function Complete({ task, form_schema, draft_data, completion_sch
                                                 <InputError message={errors[`c_${field.name}`]} className="mt-1" />
                                             </div>
                                         ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Linked Document Update */}
+                            {linked_document && (
+                                <div className="rounded-xl bg-white shadow-sm">
+                                    <div className="border-b border-gray-200 px-6 py-5">
+                                        <h3 className="text-lg font-semibold text-gray-900">Update Customer Document</h3>
+                                        <p className="mt-0.5 text-sm text-gray-500">
+                                            This task was auto-generated for <strong>{linked_document.document_type_name}</strong> renewal.
+                                            Update the document with new details below.
+                                        </p>
+                                    </div>
+                                    <div className="p-6 space-y-4">
+                                        {linked_document.current_file_url && (
+                                            <div>
+                                                <span className="text-xs text-gray-500">Current file: </span>
+                                                <a href={linked_document.current_file_url} target="_blank" rel="noopener noreferrer" className="text-xs text-emerald-600 hover:text-emerald-700">View current document</a>
+                                            </div>
+                                        )}
+                                        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                                            {linked_document.has_value && (
+                                                <div>
+                                                    <InputLabel value={`New ${linked_document.document_type_name} Number`} />
+                                                    <TextInput
+                                                        value={docUpdate.value}
+                                                        className="mt-1 block w-full"
+                                                        placeholder={linked_document.current_value ?? ''}
+                                                        onChange={(e) => setDocUpdate({ ...docUpdate, value: e.target.value })}
+                                                    />
+                                                    <InputError message={errors.doc_update_value} className="mt-1" />
+                                                </div>
+                                            )}
+                                            {linked_document.has_file && (
+                                                <div>
+                                                    <InputLabel value="New Document File" />
+                                                    <input
+                                                        type="file"
+                                                        accept=".pdf,.jpg,.jpeg,.png"
+                                                        className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:rounded-full file:border-0 file:bg-emerald-50 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-emerald-700 hover:file:bg-emerald-100"
+                                                        onChange={(e) => setDocUpdateFile(e.target.files?.[0] ?? null)}
+                                                    />
+                                                    <InputError message={errors.doc_update_file} className="mt-1" />
+                                                </div>
+                                            )}
+                                            {linked_document.has_expiry && (
+                                                <>
+                                                    <div>
+                                                        <InputLabel value="New Issue Date" />
+                                                        <TextInput
+                                                            type="date"
+                                                            value={docUpdate.issue_date}
+                                                            className="mt-1 block w-full"
+                                                            onChange={(e) => setDocUpdate({ ...docUpdate, issue_date: e.target.value })}
+                                                        />
+                                                        <InputError message={errors.doc_update_issue_date} className="mt-1" />
+                                                    </div>
+                                                    <div>
+                                                        <InputLabel value="New Expiry Date" />
+                                                        <TextInput
+                                                            type="date"
+                                                            value={docUpdate.expiry_date}
+                                                            className="mt-1 block w-full"
+                                                            onChange={(e) => setDocUpdate({ ...docUpdate, expiry_date: e.target.value })}
+                                                        />
+                                                        <InputError message={errors.doc_update_expiry_date} className="mt-1" />
+                                                    </div>
+                                                </>
+                                            )}
+                                        </div>
                                     </div>
                                 </div>
                             )}

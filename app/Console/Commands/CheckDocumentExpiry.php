@@ -103,6 +103,7 @@ class CheckDocumentExpiry extends Command
             'created_by' => $assigneeId,
             'service_id' => $serviceId,
             'customer_id' => $customer->id,
+            'customer_document_id' => $doc->id,
             'responsible_id' => $assigneeId,
             'priority' => $rule->priority,
             'status' => 'pending',

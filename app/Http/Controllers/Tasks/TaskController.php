@@ -462,7 +462,7 @@ class TaskController extends Controller
         abort_unless($task->canUserWork($user), 403);
         abort_if($task->status === 'completed', 403, 'Task is already completed.');
 
-        $task->load(['service:id,name,form_schema,completion_schema', 'customer.user:id,name']);
+        $task->load(['service:id,name,form_schema,completion_schema', 'customer.user:id,name', 'customerDocument.documentType:id,name']);
 
         // Auto-transition to in_progress if pending
         if ($task->status === 'pending') {
@@ -470,6 +470,23 @@ class TaskController extends Controller
         }
 
         $draft = ServiceSubmission::where('task_id', $task->id)->where('status', 'draft')->first();
+
+        // Linked document info (for auto-created expiry tasks)
+        $linkedDocument = null;
+        if ($task->customerDocument) {
+            $doc = $task->customerDocument;
+            $linkedDocument = [
+                'id' => $doc->id,
+                'document_type_name' => $doc->documentType?->name ?? 'Document',
+                'current_value' => $doc->value,
+                'current_file_url' => $doc->file_path ? Storage::disk('public')->url($doc->file_path) : null,
+                'current_issue_date' => $doc->issue_date?->format('Y-m-d'),
+                'current_expiry_date' => $doc->expiry_date?->format('Y-m-d'),
+                'has_expiry' => $doc->documentType?->has_expiry ?? false,
+                'has_file' => $doc->documentType?->has_file ?? false,
+                'has_value' => $doc->documentType?->has_value ?? false,
+            ];
+        }
 
         return Inertia::render('Tasks/Complete', [
             'task' => [
@@ -485,6 +502,7 @@ class TaskController extends Controller
             'completion_schema' => $task->service?->completion_schema ?? [],
             'draft_data' => $draft?->form_data['form_data'] ?? $draft?->form_data ?? (object) [],
             'draft_completion_data' => $draft?->form_data['completion_data'] ?? (object) [],
+            'linked_document' => $linkedDocument,
         ]);
     }
 
@@ -567,6 +585,14 @@ class TaskController extends Controller
         $rules['followup_start_date'] = 'nullable|date';
         $rules['followup_notes'] = 'nullable|string|max:1000';
 
+        // Linked document update fields (for expiry-triggered tasks)
+        if ($task->customer_document_id) {
+            $rules['doc_update_value'] = 'nullable|string|max:255';
+            $rules['doc_update_file'] = 'nullable|file|mimes:pdf,jpg,jpeg,png|max:10240';
+            $rules['doc_update_issue_date'] = 'nullable|date';
+            $rules['doc_update_expiry_date'] = 'nullable|date|after:doc_update_issue_date';
+        }
+
         $validated = $request->validate($rules);
         $submissionData = $validated['form_data'] ?? [];
         $completionData = $validated['completion_data'] ?? [];
@@ -598,6 +624,36 @@ class TaskController extends Controller
         }
 
         $task->update(['status' => 'completed']);
+
+        // Update linked customer document if data provided
+        if ($task->customer_document_id) {
+            $doc = $task->customerDocument;
+            if ($doc) {
+                $updateData = [];
+
+                if (! empty($validated['doc_update_value'])) {
+                    $updateData['value'] = $validated['doc_update_value'];
+                }
+                if (! empty($validated['doc_update_issue_date'])) {
+                    $updateData['issue_date'] = $validated['doc_update_issue_date'];
+                }
+                if (! empty($validated['doc_update_expiry_date'])) {
+                    $updateData['expiry_date'] = $validated['doc_update_expiry_date'];
+                }
+                if ($request->hasFile('doc_update_file')) {
+                    if ($doc->file_path) {
+                        Storage::disk('public')->delete($doc->file_path);
+                    }
+                    $file = $request->file('doc_update_file');
+                    $updateData['file_path'] = $file->store("customer-documents/{$doc->customer_id}", 'public');
+                    $updateData['original_name'] = $file->getClientOriginalName();
+                }
+
+                if (! empty($updateData)) {
+                    $doc->update($updateData);
+                }
+            }
+        }
 
         // Create follow-up task if scheduled
         $successMessage = 'Task completed successfully.';

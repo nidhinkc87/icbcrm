@@ -21,6 +21,7 @@ class Task extends Model
         'created_by',
         'service_id',
         'customer_id',
+        'customer_document_id',
         'responsible_id',
         'priority',
         'status',
@@ -48,6 +49,11 @@ class Task extends Model
     public function customer(): BelongsTo
     {
         return $this->belongsTo(Customer::class);
+    }
+
+    public function customerDocument(): BelongsTo
+    {
+        return $this->belongsTo(CustomerDocument::class);
     }
 
     public function responsible(): BelongsTo
