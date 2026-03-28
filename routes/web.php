@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Admin\EmployeePerformanceController;
+use App\Http\Controllers\Admin\ExpiryRuleController;
 use App\Http\Controllers\Admin\PermissionController;
 use App\Http\Controllers\Admin\RoleController;
 use App\Http\Controllers\Admin\ServiceController;
@@ -39,6 +40,7 @@ Route::middleware(['auth', 'verified', 'role:admin'])->prefix('admin')->name('ad
     Route::get('services/{service}/submissions/{submission}', [ServiceController::class, 'showSubmission'])->name('services.submissions.show');
     Route::get('performance', [EmployeePerformanceController::class, 'index'])->name('performance.index');
     Route::get('performance/{user}', [EmployeePerformanceController::class, 'show'])->name('performance.show');
+    Route::resource('expiry-rules', ExpiryRuleController::class)->except(['show']);
 });
 
 // Task routes (accessible by auth users — permission gates in controllers)
