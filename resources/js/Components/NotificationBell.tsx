@@ -21,21 +21,6 @@ function csrfToken(): string {
     return meta ? meta.getAttribute('content') ?? '' : '';
 }
 
-function relativeTime(dateString: string): string {
-    const now = new Date();
-    const date = new Date(dateString);
-    const diffMs = now.getTime() - date.getTime();
-    const diffSec = Math.floor(diffMs / 1000);
-    const diffMin = Math.floor(diffSec / 60);
-    const diffHr = Math.floor(diffMin / 60);
-    const diffDay = Math.floor(diffHr / 24);
-
-    if (diffSec < 60) return 'just now';
-    if (diffMin < 60) return `${diffMin}m ago`;
-    if (diffHr < 24) return `${diffHr}h ago`;
-    if (diffDay < 7) return `${diffDay}d ago`;
-    return date.toLocaleDateString();
-}
 
 export default function NotificationBell() {
     const [notifications, setNotifications] = useState<Notification[]>([]);
@@ -61,7 +46,15 @@ export default function NotificationBell() {
     useEffect(() => {
         fetchNotifications();
         const interval = setInterval(fetchNotifications, 30000);
-        return () => clearInterval(interval);
+
+        // Also refresh on Inertia page navigation
+        const handleNavigate = () => fetchNotifications();
+        document.addEventListener('inertia:finish', handleNavigate);
+
+        return () => {
+            clearInterval(interval);
+            document.removeEventListener('inertia:finish', handleNavigate);
+        };
     }, [fetchNotifications]);
 
     // Close on outside click
@@ -201,7 +194,7 @@ export default function NotificationBell() {
                                             {notification.data.message}
                                         </p>
                                         <p className="mt-1 text-xs text-gray-400">
-                                            {relativeTime(notification.created_at)}
+                                            {notification.created_at}
                                         </p>
                                     </div>
                                 </button>
