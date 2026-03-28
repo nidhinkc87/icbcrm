@@ -139,10 +139,7 @@ export default function Create({ services, customers, employees }: Props) {
                                         </div>
                                     )}
                                     {availableCollaborators.length > 0 && (
-                                        <SelectInput className="block w-full sm:w-64" value="" onChange={(e) => { addCollaborator(Number(e.target.value)); e.target.value = ''; }}>
-                                            <option value="">Add collaborator...</option>
-                                            {availableCollaborators.map((e) => <option key={e.id} value={e.id}>{e.name}</option>)}
-                                        </SelectInput>
+                                        <SearchableSelect className="block w-full sm:w-64" options={availableCollaborators} value="" onChange={(val) => { if (val) addCollaborator(Number(val)); }} placeholder="Add collaborator..." />
                                     )}
                                     <InputError message={errors.collaborator_ids} className="mt-1" />
                                 </div>
