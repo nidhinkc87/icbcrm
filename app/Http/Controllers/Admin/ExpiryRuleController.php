@@ -37,7 +37,7 @@ class ExpiryRuleController extends Controller
         return Inertia::render('Admin/ExpiryRules/Create', [
             'document_types' => DocumentType::where('is_active', true)->get(['id', 'name']),
             'services' => Service::where('is_active', true)->get(['id', 'name']),
-            'employees' => User::select('id', 'name')->get(),
+            'employees' => User::role('employee')->select('id', 'name')->orderBy('name')->get(),
         ]);
     }
 
@@ -73,7 +73,7 @@ class ExpiryRuleController extends Controller
             'rule' => $expiry_rule->load(['documentType:id,name', 'assignedEmployee:id,name']),
             'document_types' => DocumentType::where('is_active', true)->get(['id', 'name']),
             'services' => Service::where('is_active', true)->get(['id', 'name']),
-            'employees' => User::select('id', 'name')->get(),
+            'employees' => User::role('employee')->select('id', 'name')->orderBy('name')->get(),
         ]);
     }
 
