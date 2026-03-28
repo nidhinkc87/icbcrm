@@ -14,7 +14,7 @@ class ExpiryRuleController extends Controller
 {
     public function index()
     {
-        $rules = ExpiryActionRule::with(['documentType:id,name', 'service:id,name', 'assignedEmployee:id,name'])
+        $rules = ExpiryActionRule::with(['documentType', 'service', 'assignedEmployee'])
             ->latest()
             ->paginate(15);
 
@@ -26,9 +26,9 @@ class ExpiryRuleController extends Controller
     public function create()
     {
         return Inertia::render('Admin/ExpiryRules/Create', [
-            'document_types' => DocumentType::where('is_active', true)->select('id', 'name')->orderBy('name')->get(),
-            'services' => Service::where('is_active', true)->select('id', 'name')->orderBy('name')->get(),
-            'employees' => User::select('id', 'name')->orderBy('name')->get(),
+            'document_types' => DocumentType::where('is_active', true)->get(['id', 'name']),
+            'services' => Service::where('is_active', true)->get(['id', 'name']),
+            'employees' => User::select('id', 'name')->get(),
         ]);
     }
 
@@ -55,13 +55,13 @@ class ExpiryRuleController extends Controller
 
     public function edit(ExpiryActionRule $expiry_rule)
     {
-        $expiry_rule->load(['documentType:id,name', 'service:id,name', 'assignedEmployee:id,name']);
+        $expiry_rule->load(['documentType', 'service', 'assignedEmployee']);
 
         return Inertia::render('Admin/ExpiryRules/Edit', [
             'rule' => $expiry_rule,
-            'document_types' => DocumentType::where('is_active', true)->select('id', 'name')->orderBy('name')->get(),
-            'services' => Service::where('is_active', true)->select('id', 'name')->orderBy('name')->get(),
-            'employees' => User::select('id', 'name')->orderBy('name')->get(),
+            'document_types' => DocumentType::where('is_active', true)->get(['id', 'name']),
+            'services' => Service::where('is_active', true)->get(['id', 'name']),
+            'employees' => User::select('id', 'name')->get(),
         ]);
     }
 

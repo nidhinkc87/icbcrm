@@ -9,38 +9,50 @@ import { useState } from 'react';
 interface RuleRow {
     id: number;
     name: string;
-    document_type: { id: number; name: string } | null;
+    document_type_id: number;
     trigger_days_before: number;
     action: string;
-    service: { id: number; name: string } | null;
+    service_id: number | null;
     assignment_strategy: string;
-    assigned_employee: { id: number; name: string } | null;
-    priority: string;
-    is_active: boolean;
+    assigned_employee_id: number | null;
     notify_customer: boolean;
     notify_admin: boolean;
+    priority: string;
+    is_active: boolean;
+    document_type?: { id: number; name: string };
+    service?: { id: number; name: string } | null;
+    assigned_employee?: { id: number; name: string } | null;
 }
 
 interface Props extends PageProps {
     rules: Paginated<RuleRow>;
 }
 
-const priorityColors: Record<string, string> = {
-    low: 'bg-gray-100 text-gray-800',
-    medium: 'bg-blue-100 text-blue-800',
-    high: 'bg-orange-100 text-orange-800',
-    urgent: 'bg-red-100 text-red-800',
+const priorityBadge = (priority: string) => {
+    const styles: Record<string, string> = {
+        low: 'bg-gray-100 text-gray-800',
+        medium: 'bg-blue-100 text-blue-800',
+        high: 'bg-orange-100 text-orange-800',
+        urgent: 'bg-red-100 text-red-800',
+    };
+    return (
+        <span className={`inline-flex rounded-full px-2 text-xs font-semibold leading-5 ${styles[priority] || 'bg-gray-100 text-gray-800'}`}>
+            {priority}
+        </span>
+    );
 };
 
-const actionLabels: Record<string, string> = {
-    notify_only: 'Notify Only',
-    auto_create_task: 'Auto Create Task',
+const actionLabel = (action: string) => {
+    return action === 'auto_create_task' ? 'Auto Create Task' : 'Notify Only';
 };
 
-const strategyLabels: Record<string, string> = {
-    last_employee: 'Last Employee',
-    admin: 'Admin',
-    specific_employee: 'Specific Employee',
+const strategyLabel = (strategy: string) => {
+    const labels: Record<string, string> = {
+        last_employee: 'Last Employee',
+        admin: 'Admin',
+        specific_employee: 'Specific Employee',
+    };
+    return labels[strategy] || strategy;
 };
 
 export default function Index({ rules }: Props) {
@@ -87,7 +99,7 @@ export default function Index({ rules }: Props) {
                             href={route('admin.expiry-rules.create')}
                             className="inline-flex items-center rounded-md border border-transparent bg-emerald-600 px-4 py-2 text-xs font-semibold uppercase tracking-widest text-white transition duration-150 ease-in-out hover:bg-emerald-700 focus:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 active:bg-emerald-900"
                         >
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="-ml-1 mr-2 h-4 w-4">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="-ml-0.5 mr-2 h-4 w-4">
                                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
                             </svg>
                             Create Rule
@@ -124,30 +136,34 @@ export default function Index({ rules }: Props) {
                                                 {rule.name}
                                             </td>
                                             <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900">
-                                                {rule.document_type?.name ?? '-'}
+                                                {rule.document_type?.name || '-'}
                                             </td>
                                             <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900">
                                                 {rule.trigger_days_before} days
                                             </td>
                                             <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900">
-                                                {actionLabels[rule.action] ?? rule.action}
+                                                {actionLabel(rule.action)}
                                             </td>
                                             <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900">
-                                                {rule.service?.name ?? '-'}
+                                                {rule.service?.name || '-'}
                                             </td>
                                             <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900">
-                                                {strategyLabels[rule.assignment_strategy] ?? rule.assignment_strategy}
-                                                {rule.assignment_strategy === 'specific_employee' && rule.assigned_employee && (
+                                                {strategyLabel(rule.assignment_strategy)}
+                                                {rule.assigned_employee && (
                                                     <span className="ml-1 text-gray-500">({rule.assigned_employee.name})</span>
                                                 )}
                                             </td>
                                             <td className="whitespace-nowrap px-6 py-4 text-sm">
-                                                <span className={`inline-flex rounded-full px-2 text-xs font-semibold leading-5 ${priorityColors[rule.priority] ?? 'bg-gray-100 text-gray-800'}`}>
-                                                    {rule.priority}
-                                                </span>
+                                                {priorityBadge(rule.priority)}
                                             </td>
                                             <td className="whitespace-nowrap px-6 py-4 text-sm">
-                                                <span className={`inline-flex rounded-full px-2 text-xs font-semibold leading-5 ${rule.is_active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>
+                                                <span
+                                                    className={`inline-flex rounded-full px-2 text-xs font-semibold leading-5 ${
+                                                        rule.is_active
+                                                            ? 'bg-emerald-100 text-emerald-800'
+                                                            : 'bg-gray-100 text-gray-800'
+                                                    }`}
+                                                >
                                                     {rule.is_active ? 'Active' : 'Inactive'}
                                                 </span>
                                             </td>
