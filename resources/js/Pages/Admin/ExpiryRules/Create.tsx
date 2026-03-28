@@ -2,6 +2,7 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import InputError from '@/Components/InputError';
 import InputLabel from '@/Components/InputLabel';
 import PrimaryButton from '@/Components/PrimaryButton';
+import SearchableSelect from '@/Components/SearchableSelect';
 import TextInput from '@/Components/TextInput';
 import { Head, Link, useForm } from '@inertiajs/react';
 import { FormEventHandler } from 'react';
@@ -128,11 +129,13 @@ export default function Create({ document_types, services, employees }: Props) {
 
                             {data.assignment_strategy === 'specific_employee' && (
                                 <div className="mt-4">
-                                    <InputLabel htmlFor="assigned_employee_id" value="Assign To *" />
-                                    <select id="assigned_employee_id" value={data.assigned_employee_id} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-emerald-500 focus:ring-emerald-500" onChange={(e) => setData('assigned_employee_id', e.target.value)} required>
-                                        <option value="">Select Employee</option>
-                                        {employees.map((emp) => <option key={emp.id} value={emp.id}>{emp.name}</option>)}
-                                    </select>
+                                    <InputLabel value="Assign To *" />
+                                    <SearchableSelect
+                                        options={employees}
+                                        value={data.assigned_employee_id}
+                                        onChange={(val) => setData('assigned_employee_id', val)}
+                                        placeholder="Select Employee"
+                                    />
                                     <InputError message={errors.assigned_employee_id} className="mt-2" />
                                 </div>
                             )}
