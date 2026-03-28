@@ -22,10 +22,10 @@ class RolesAndPermissionsSeeder extends Seeder
             'create employees',
             'edit employees',
             'delete employees',
-            'view clients',
-            'create clients',
-            'edit clients',
-            'delete clients',
+            'view customers',
+            'create customers',
+            'edit customers',
+            'delete customers',
             'manage settings',
             'assign tasks',
             'view tasks',
@@ -43,18 +43,18 @@ class RolesAndPermissionsSeeder extends Seeder
 
         $employeeRole = Role::firstOrCreate(['name' => 'employee']);
         $employeeRole->syncPermissions([
-            'view clients',
-            'create clients',
-            'edit clients',
-            'delete clients',
+            'view customers',
+            'create customers',
+            'edit customers',
+            'delete customers',
             'view tasks',
             'view dashboard',
             'view own profile',
             'edit own profile',
         ]);
 
-        $clientRole = Role::firstOrCreate(['name' => 'client']);
-        $clientRole->syncPermissions([
+        $customerRole = Role::firstOrCreate(['name' => 'customer']);
+        $customerRole->syncPermissions([
             'view tasks',
             'view dashboard',
             'view own profile',

@@ -26,7 +26,7 @@ class TaskOverdueAlert extends Notification implements ShouldQueue
     {
         $appName = config('app.name');
         $serviceName = $this->task->service?->name ?? 'N/A';
-        $clientName = $this->task->client?->user?->name ?? 'N/A';
+        $customerName = $this->task->customer?->user?->name ?? 'N/A';
         $responsibleName = $this->task->responsible?->name ?? 'N/A';
         $dueDate = $this->task->due_date->format('M d, Y');
         $url = route('tasks.show', $this->task->id);
@@ -51,7 +51,7 @@ class TaskOverdueAlert extends Notification implements ShouldQueue
             ->line("**Task Details:**")
             ->line("- **Task ID:** #{$this->task->id}")
             ->line("- **Service:** {$serviceName}")
-            ->line("- **Client:** {$clientName}")
+            ->line("- **Customer:** {$customerName}")
             ->line("- **Responsible:** {$responsibleName}")
             ->line("- **Priority:** " . ucfirst($this->task->priority))
             ->line("- **Status:** " . ucfirst(str_replace('_', ' ', $this->task->status)))

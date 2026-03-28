@@ -25,7 +25,7 @@ class TaskCreated extends Notification implements ShouldQueue
     {
         $appName = config('app.name');
         $serviceName = $this->task->service?->name ?? 'N/A';
-        $clientName = $this->task->client?->user?->name ?? 'N/A';
+        $customerName = $this->task->customer?->user?->name ?? 'N/A';
         $creatorName = $this->task->creator?->name ?? 'System';
         $priority = ucfirst($this->task->priority);
         $dueDate = $this->task->due_date->format('M d, Y');
@@ -49,7 +49,7 @@ class TaskCreated extends Notification implements ShouldQueue
             ->line("**Task Details:**")
             ->line("- **Task ID:** #{$this->task->id}")
             ->line("- **Service:** {$serviceName}")
-            ->line("- **Client:** {$clientName}")
+            ->line("- **Customer:** {$customerName}")
             ->line("- **Priority:** {$priority}")
             ->line("- **Due Date:** {$dueDate}")
             ->when($this->task->instructions, fn ($m) => $m->line("- **Instructions:** " . \Illuminate\Support\Str::limit($this->task->instructions, 150)))

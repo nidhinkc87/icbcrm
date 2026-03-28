@@ -33,8 +33,8 @@ interface TaskDetail {
     id: number;
     service_id: number;
     service_name: string;
-    client_id: number;
-    client_name: string;
+    customer_id: number;
+    customer_name: string;
     responsible_id: number;
     responsible_name: string;
     collaborators: { id: number; name: string; can_work: boolean }[];
@@ -256,7 +256,7 @@ export default function Show({ task, submission, form_schema, completion_schema,
                                                 Task #{task.id} — {task.service_name}
                                             </h1>
                                             <p className="mt-1 text-sm text-emerald-200">
-                                                Client: {task.client_name}
+                                                Client: {task.customer_name}
                                             </p>
                                             <div className="mt-3 flex flex-wrap gap-2">
                                                 <span className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium capitalize ${priorityColors[task.priority]}`}>
@@ -337,7 +337,7 @@ export default function Show({ task, submission, form_schema, completion_schema,
                                                 </div>
                                             </div>
 
-                                            {/* Client */}
+                                            {/* Customer */}
                                             <div className="flex items-center gap-3">
                                                 <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gray-100">
                                                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="h-4 w-4 text-gray-500">
@@ -346,7 +346,7 @@ export default function Show({ task, submission, form_schema, completion_schema,
                                                 </div>
                                                 <div className="min-w-0">
                                                     <p className="text-xs text-gray-500">Client</p>
-                                                    <p className="text-sm font-medium text-gray-900">{task.client_name}</p>
+                                                    <p className="text-sm font-medium text-gray-900">{task.customer_name}</p>
                                                 </div>
                                             </div>
 

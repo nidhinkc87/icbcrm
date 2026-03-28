@@ -208,14 +208,14 @@ class EmployeePerformanceController extends Controller
         // Recent completed tasks
         $recentTasks = Task::where('responsible_id', $user->id)
             ->where('status', 'completed')
-            ->with(['service:id,name', 'client.user:id,name'])
+            ->with(['service:id,name', 'customer.user:id,name'])
             ->latest('updated_at')
             ->limit(10)
             ->get()
             ->map(fn (Task $t) => [
                 'id' => $t->id,
                 'service_name' => $t->service?->name ?? 'Unknown',
-                'client_name' => $t->client?->user?->name ?? 'Unknown',
+                'customer_name' => $t->customer?->user?->name ?? 'Unknown',
                 'priority' => $t->priority,
                 'due_date' => $t->due_date->format('M d, Y'),
                 'completed_at' => $t->updated_at->format('M d, Y'),

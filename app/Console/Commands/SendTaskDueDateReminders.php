@@ -19,7 +19,7 @@ class SendTaskDueDateReminders extends Command
 
         $tasks = Task::where('status', '!=', 'completed')
             ->whereBetween('due_date', [$today, $today->copy()->addDays(3)])
-            ->with(['service:id,name', 'client.user:id,name', 'responsible:id,name,email', 'collaborators:id,name,email'])
+            ->with(['service:id,name', 'customer.user:id,name', 'responsible:id,name,email', 'collaborators:id,name,email'])
             ->get();
 
         $count = 0;

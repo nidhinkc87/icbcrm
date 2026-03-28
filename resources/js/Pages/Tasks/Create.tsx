@@ -8,10 +8,10 @@ import { Head, Link, router } from '@inertiajs/react';
 import { FormEventHandler, useState, useRef } from 'react';
 
 interface Option { id: number; name: string; }
-interface Props { services: Option[]; clients: Option[]; employees: Option[]; }
+interface Props { services: Option[]; customers: Option[]; employees: Option[]; }
 
-export default function Create({ services, clients, employees }: Props) {
-    const [data, setData] = useState({ service_id: '', client_id: '', responsible_id: '', due_date: '', priority: 'medium', instructions: '' });
+export default function Create({ services, customers, employees }: Props) {
+    const [data, setData] = useState({ service_id: '', customer_id: '', responsible_id: '', due_date: '', priority: 'medium', instructions: '' });
     const [collaboratorIds, setCollaboratorIds] = useState<number[]>([]);
     const [attachments, setAttachments] = useState<File[]>([]);
     const [errors, setErrors] = useState<Record<string, string>>({});
@@ -70,12 +70,12 @@ export default function Create({ services, clients, employees }: Props) {
                                         <InputError message={errors.service_id} className="mt-1" />
                                     </div>
                                     <div>
-                                        <InputLabel htmlFor="client_id" value="Client *" />
-                                        <SelectInput id="client_id" value={data.client_id} className="mt-1 block w-full" onChange={(e) => setField('client_id', e.target.value)}>
-                                            <option value="">Select Client</option>
-                                            {clients.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                                        <InputLabel htmlFor="customer_id" value="Customer *" />
+                                        <SelectInput id="customer_id" value={data.customer_id} className="mt-1 block w-full" onChange={(e) => setField('customer_id', e.target.value)}>
+                                            <option value="">Select Customer</option>
+                                            {customers.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
                                         </SelectInput>
-                                        <InputError message={errors.client_id} className="mt-1" />
+                                        <InputError message={errors.customer_id} className="mt-1" />
                                     </div>
                                     <div>
                                         <InputLabel htmlFor="responsible_id" value="Responsible Person *" />

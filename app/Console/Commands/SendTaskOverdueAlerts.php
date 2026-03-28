@@ -20,7 +20,7 @@ class SendTaskOverdueAlerts extends Command
 
         $tasks = Task::where('status', '!=', 'completed')
             ->where('due_date', '<', $today)
-            ->with(['service:id,name', 'client.user:id,name', 'responsible:id,name,email', 'creator:id,name,email'])
+            ->with(['service:id,name', 'customer.user:id,name', 'responsible:id,name,email', 'creator:id,name,email'])
             ->get();
 
         $admins = User::role('admin')->get();

@@ -17,57 +17,26 @@ const EMIRATES = [
     'Fujairah',
 ];
 
-const KYC_LABELS: Record<string, string> = {
-    emirates_id: 'Emirates ID',
-    passport: 'Passport',
-    trade_license: 'Trade License',
-    moa: 'MOA (LLC Company)',
-};
-
-interface DocumentData {
-    id: number;
-    type: string;
-    label: string | null;
-    original_name: string;
-    url: string;
-}
-
-interface UserData {
-    id: number;
-    name: string;
-    email: string;
-    phone: string | null;
-    address_line: string | null;
-    city: string | null;
-    emirate: string | null;
-    country: string | null;
-    po_box: string | null;
-    documents: DocumentData[];
-}
-
-interface Props {
-    user: UserData;
-    allRoles: string[];
-    userRoles: string[];
-}
-
 interface AdditionalDoc {
     label: string;
     file: File | null;
 }
 
-export default function EditClient({ user, allRoles, userRoles }: Props) {
+interface Props {
+    roles: string[];
+}
+
+export default function CreateCustomer({ roles }: Props) {
     const [data, setData] = useState({
-        name: user.name,
-        email: user.email,
-        password: '',
-        password_confirmation: '',
-        phone: user.phone ?? '',
-        address_line: user.address_line ?? '',
-        city: user.city ?? '',
-        emirate: user.emirate ?? '',
-        country: user.country ?? 'UAE',
-        po_box: user.po_box ?? '',
+        name: '',
+        email: '',
+        type: 'customer' as const,
+        phone: '',
+        address_line: '',
+        city: '',
+        emirate: '',
+        country: 'UAE',
+        po_box: '',
     });
 
     const [kycFiles, setKycFiles] = useState<{
@@ -82,20 +51,10 @@ export default function EditClient({ user, allRoles, userRoles }: Props) {
         moa: null,
     });
 
-    const [selectedRole, setSelectedRole] = useState(
-        userRoles.find((r) => r !== 'client' && r !== 'admin') ?? '',
-    );
+    const [selectedRole, setSelectedRole] = useState('');
     const [additionalDocs, setAdditionalDocs] = useState<AdditionalDoc[]>([]);
-    const [removeDocIds, setRemoveDocIds] = useState<number[]>([]);
     const [errors, setErrors] = useState<Record<string, string>>({});
     const [processing, setProcessing] = useState(false);
-
-    const existingKyc = user.documents.filter((d) => d.type !== 'additional');
-    const existingAdditional = user.documents.filter(
-        (d) => d.type === 'additional' && !removeDocIds.includes(d.id),
-    );
-
-    const getExistingDoc = (type: string) => existingKyc.find((d) => d.type === type);
 
     const setField = (key: string, value: string) => {
         setData((prev) => ({ ...prev, [key]: value }));
@@ -117,12 +76,8 @@ export default function EditClient({ user, allRoles, userRoles }: Props) {
         });
     };
 
-    const removeNewAdditionalDoc = (index: number) => {
+    const removeAdditionalDoc = (index: number) => {
         setAdditionalDocs((prev) => prev.filter((_, i) => i !== index));
-    };
-
-    const markDocForRemoval = (docId: number) => {
-        setRemoveDocIds((prev) => [...prev, docId]);
     };
 
     const submit: FormEventHandler = (e) => {
@@ -130,11 +85,10 @@ export default function EditClient({ user, allRoles, userRoles }: Props) {
         setProcessing(true);
 
         const formData = new FormData();
-        formData.append('_method', 'put');
 
         // Profile fields
         Object.entries(data).forEach(([key, value]) => {
-            if (value) formData.append(key, value);
+            formData.append(key, value);
         });
 
         // Role
@@ -142,17 +96,12 @@ export default function EditClient({ user, allRoles, userRoles }: Props) {
             formData.append('role', selectedRole);
         }
 
-        // KYC replacement files
+        // KYC files
         Object.entries(kycFiles).forEach(([key, file]) => {
             if (file) formData.append(key, file);
         });
 
-        // Documents to remove
-        removeDocIds.forEach((id, index) => {
-            formData.append(`remove_documents[${index}]`, String(id));
-        });
-
-        // New additional documents
+        // Additional documents
         additionalDocs.forEach((doc, index) => {
             formData.append(`additional_documents[${index}][label]`, doc.label);
             if (doc.file) {
@@ -160,7 +109,7 @@ export default function EditClient({ user, allRoles, userRoles }: Props) {
             }
         });
 
-        router.post(route('admin.users.update', user.id), formData, {
+        router.post(route('admin.users.store'), formData, {
             forceFormData: true,
             onError: (errs) => setErrors(errs),
             onFinish: () => setProcessing(false),
@@ -171,11 +120,11 @@ export default function EditClient({ user, allRoles, userRoles }: Props) {
         <AuthenticatedLayout
             header={
                 <h2 className="text-xl font-semibold leading-tight text-gray-800">
-                    Edit Client
+                    Create Customer
                 </h2>
             }
         >
-            <Head title="Edit Client" />
+            <Head title="Create Customer" />
 
             <div className="py-12">
                 <div className="max-w-4xl sm:px-6 lg:px-8">
@@ -282,112 +231,45 @@ export default function EditClient({ user, allRoles, userRoles }: Props) {
                                 </div>
                             </div>
 
-                            {/* Password */}
-                            <h3 className="mt-8 border-t border-gray-200 pt-6 text-lg font-medium text-gray-900">
-                                Change Password
-                            </h3>
-                            <p className="mt-1 text-sm text-gray-500">Leave blank to keep current password.</p>
-                            <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
-                                <div>
-                                    <InputLabel htmlFor="password" value="New Password" />
-                                    <TextInput
-                                        id="password"
-                                        type="password"
-                                        value={data.password}
-                                        className="mt-1 block w-full"
-                                        onChange={(e) => setField('password', e.target.value)}
-                                    />
-                                    <InputError message={errors.password} className="mt-2" />
-                                </div>
-                                <div>
-                                    <InputLabel htmlFor="password_confirmation" value="Confirm Password" />
-                                    <TextInput
-                                        id="password_confirmation"
-                                        type="password"
-                                        value={data.password_confirmation}
-                                        className="mt-1 block w-full"
-                                        onChange={(e) => setField('password_confirmation', e.target.value)}
-                                    />
-                                </div>
-                            </div>
-
                             {/* KYC Documents */}
                             <h3 className="mt-8 border-t border-gray-200 pt-6 text-lg font-medium text-gray-900">
                                 KYC Documents
                             </h3>
                             <p className="mt-1 text-sm text-gray-500">
-                                Upload a new file to replace the existing document.
+                                Upload PDF, JPG, or PNG files (max 5MB each).
                             </p>
                             <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
-                                {(['emirates_id', 'passport', 'trade_license', 'moa'] as const).map((key) => {
-                                    const existing = getExistingDoc(key);
-                                    return (
-                                        <div key={key}>
-                                            <InputLabel htmlFor={key} value={KYC_LABELS[key]} />
-                                            {existing && !kycFiles[key] && (
-                                                <div className="mt-1 flex items-center gap-2">
-                                                    <a
-                                                        href={existing.url}
-                                                        target="_blank"
-                                                        rel="noopener noreferrer"
-                                                        className="text-sm text-emerald-600 hover:text-emerald-900 underline"
-                                                    >
-                                                        {existing.original_name}
-                                                    </a>
-                                                </div>
-                                            )}
-                                            <input
-                                                id={key}
-                                                type="file"
-                                                accept=".pdf,.jpg,.jpeg,.png"
-                                                className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:rounded-md file:border-0 file:bg-emerald-50 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-emerald-700 hover:file:bg-emerald-100"
-                                                onChange={(e) => setKycFile(key, e.target.files?.[0] ?? null)}
-                                            />
-                                            {kycFiles[key] && (
-                                                <p className="mt-1 text-xs text-emerald-600">
-                                                    New: {kycFiles[key]!.name}
-                                                </p>
-                                            )}
-                                            <InputError message={errors[key]} className="mt-2" />
-                                        </div>
-                                    );
-                                })}
+                                {([
+                                    ['emirates_id', 'Emirates ID *'],
+                                    ['passport', 'Passport *'],
+                                    ['trade_license', 'Trade License *'],
+                                    ['moa', 'MOA (LLC Company) *'],
+                                ] as const).map(([key, label]) => (
+                                    <div key={key}>
+                                        <InputLabel htmlFor={key} value={label} />
+                                        <input
+                                            id={key}
+                                            type="file"
+                                            accept=".pdf,.jpg,.jpeg,.png"
+                                            className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:rounded-md file:border-0 file:bg-emerald-50 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-emerald-700 hover:file:bg-emerald-100"
+                                            onChange={(e) => setKycFile(key, e.target.files?.[0] ?? null)}
+                                        />
+                                        {kycFiles[key] && (
+                                            <p className="mt-1 text-xs text-gray-500">{kycFiles[key]!.name}</p>
+                                        )}
+                                        <InputError message={errors[key]} className="mt-2" />
+                                    </div>
+                                ))}
                             </div>
 
                             {/* Additional Documents */}
                             <h3 className="mt-8 border-t border-gray-200 pt-6 text-lg font-medium text-gray-900">
                                 Additional Documents
                             </h3>
+                            <p className="mt-1 text-sm text-gray-500">
+                                Upload any additional documents such as registration certificates, VAT certificates, etc.
+                            </p>
 
-                            {/* Existing additional docs */}
-                            {existingAdditional.length > 0 && (
-                                <div className="mt-4 space-y-2">
-                                    {existingAdditional.map((doc) => (
-                                        <div key={doc.id} className="flex items-center gap-3 rounded-lg border border-gray-200 bg-gray-50 px-4 py-3">
-                                            <div className="min-w-0 flex-1">
-                                                <p className="text-sm font-medium text-gray-900">{doc.label}</p>
-                                                <a
-                                                    href={doc.url}
-                                                    target="_blank"
-                                                    rel="noopener noreferrer"
-                                                    className="text-xs text-emerald-600 hover:text-emerald-900 underline"
-                                                >
-                                                    {doc.original_name}
-                                                </a>
-                                            </div>
-                                            <button
-                                                type="button"
-                                                onClick={() => markDocForRemoval(doc.id)}
-                                                className="text-red-400 hover:text-red-600"
-                                            >
-                                                &#10005;
-                                            </button>
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
-
-                            {/* New additional docs */}
                             {additionalDocs.length > 0 && (
                                 <div className="mt-4 space-y-3">
                                     {additionalDocs.map((doc, index) => (
@@ -417,7 +299,7 @@ export default function EditClient({ user, allRoles, userRoles }: Props) {
                                             </div>
                                             <button
                                                 type="button"
-                                                onClick={() => removeNewAdditionalDoc(index)}
+                                                onClick={() => removeAdditionalDoc(index)}
                                                 className="mt-6 text-red-400 hover:text-red-600"
                                             >
                                                 &#10005;
@@ -436,7 +318,7 @@ export default function EditClient({ user, allRoles, userRoles }: Props) {
                             </button>
 
                             {/* Role */}
-                            {allRoles.length > 0 && (
+                            {roles.length > 0 && (
                                 <>
                                     <h3 className="mt-8 border-t border-gray-200 pt-6 text-lg font-medium text-gray-900">
                                         Role
@@ -452,7 +334,7 @@ export default function EditClient({ user, allRoles, userRoles }: Props) {
                                             />
                                             <span className="text-sm text-gray-700">None</span>
                                         </label>
-                                        {allRoles.map((r) => (
+                                        {roles.map((r) => (
                                             <label key={r} className="flex items-center gap-2">
                                                 <input
                                                     type="radio"
@@ -478,7 +360,7 @@ export default function EditClient({ user, allRoles, userRoles }: Props) {
                                     Cancel
                                 </Link>
                                 <PrimaryButton disabled={processing}>
-                                    Update Client
+                                    Create Customer
                                 </PrimaryButton>
                             </div>
                         </form>

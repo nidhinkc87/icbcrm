@@ -80,7 +80,7 @@ function DocumentCard({ doc, label }: { doc: DocumentData; label: string }) {
     );
 }
 
-export default function ShowClient({ user }: Props) {
+export default function ShowCustomer({ user }: Props) {
     const kycDocs = user.documents.filter((d) => d.type !== 'additional');
     const additionalDocs = user.documents.filter((d) => d.type === 'additional');
 
@@ -99,11 +99,11 @@ export default function ShowClient({ user }: Props) {
         <AuthenticatedLayout
             header={
                 <h2 className="text-xl font-semibold leading-tight text-gray-800">
-                    Client Details
+                    Customer Details
                 </h2>
             }
         >
-            <Head title={`Client - ${user.name}`} />
+            <Head title={`Customer - ${user.name}`} />
 
             <div className="py-12">
                 <div className="max-w-4xl sm:px-6 lg:px-8 space-y-6">
@@ -118,7 +118,7 @@ export default function ShowClient({ user }: Props) {
                                     <h3 className="text-xl font-semibold text-white truncate">{user.name}</h3>
                                     <p className="mt-1 text-sm text-emerald-200">{user.email}</p>
                                     <span className="mt-2 inline-flex items-center rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-medium text-green-800">
-                                        Client
+                                        Customer
                                     </span>
                                 </div>
                                 <div className="hidden sm:flex gap-2">

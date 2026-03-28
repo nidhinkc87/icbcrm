@@ -2,7 +2,7 @@
 
 namespace Database\Seeders;
 
-use App\Models\Client;
+use App\Models\Customer;
 use App\Models\Employee;
 use App\Models\User;
 use Carbon\Carbon;
@@ -69,7 +69,7 @@ class UserSeeder extends Seeder
         // CLIENTS
         // =================================================================
 
-        $clients = [
+        $customers = [
             ['name' => 'Al Maktoum Trading LLC', 'email' => 'info@almaktoumtrading.ae', 'phone' => '+971 4 345 6789', 'address' => 'Office 1205, Citadel Tower, Business Bay', 'city' => 'Dubai', 'emirate' => 'Dubai', 'po_box' => '45231'],
             ['name' => 'Gulf Star Enterprises', 'email' => 'accounts@gulfstar.ae', 'phone' => '+971 2 678 1234', 'address' => 'Suite 403, Al Reem Tower, Al Reem Island', 'city' => 'Abu Dhabi', 'emirate' => 'Abu Dhabi', 'po_box' => '78456'],
             ['name' => 'Emirates Tech Solutions FZE', 'email' => 'finance@emiratestech.ae', 'phone' => '+971 6 543 8765', 'address' => 'Warehouse 12, SAIF Zone', 'city' => 'Sharjah', 'emirate' => 'Sharjah', 'po_box' => '12098'],
@@ -82,14 +82,14 @@ class UserSeeder extends Seeder
             ['name' => 'Sands F&B Management FZCO', 'email' => 'info@sandsfb.ae', 'phone' => '+971 4 567 8901', 'address' => 'Office 2401, One by Omniyat, Business Bay', 'city' => 'Dubai', 'emirate' => 'Dubai', 'po_box' => '90123'],
         ];
 
-        foreach ($clients as $data) {
+        foreach ($customers as $data) {
             $user = User::updateOrCreate(
                 ['email' => $data['email']],
                 ['name' => $data['name'], 'password' => $password, 'email_verified_at' => now()]
             );
-            $user->syncRoles(['client']);
+            $user->syncRoles(['customer']);
 
-            Client::updateOrCreate(
+            Customer::updateOrCreate(
                 ['user_id' => $user->id],
                 [
                     'phone' => $data['phone'],

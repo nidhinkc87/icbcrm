@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\Tasks;
 
 use App\Http\Controllers\Controller;
-use App\Models\Client;
+use App\Models\Customer;
 use App\Models\Service;
 use App\Models\Task;
 use App\Models\ServiceSubmission;
@@ -52,7 +52,7 @@ class TaskController extends Controller
         ];
 
         $tasks = Task::visibleTo($user)
-            ->with(['service:id,name', 'client.user:id,name', 'responsible:id,name'])
+            ->with(['service:id,name', 'customer.user:id,name', 'responsible:id,name'])
             ->when($status, function ($q) use ($status) {
                 if ($status === 'overdue') {
                     $q->where('status', '!=', 'completed')->where('due_date', '<', now()->toDateString());
@@ -63,7 +63,7 @@ class TaskController extends Controller
             ->when($search, function ($q, $search) {
                 $q->where(function ($sq) use ($search) {
                     $sq->whereHas('service', fn ($s) => $s->where('name', 'like', "%{$search}%"))
-                       ->orWhereHas('client', fn ($c) => $c->whereHas('user', fn ($u) => $u->where('name', 'like', "%{$search}%")))
+                       ->orWhereHas('customer', fn ($c) => $c->whereHas('user', fn ($u) => $u->where('name', 'like', "%{$search}%")))
                        ->orWhereHas('responsible', fn ($r) => $r->where('name', 'like', "%{$search}%"))
                        ->orWhere('instructions', 'like', "%{$search}%");
                 });
@@ -75,7 +75,7 @@ class TaskController extends Controller
         $tasks->through(fn (Task $task) => [
             'id' => $task->id,
             'service_name' => $task->service?->name ?? 'Deleted Service',
-            'client_name' => $task->client?->user?->name ?? 'Deleted Client',
+            'customer_name' => $task->customer?->user?->name ?? 'Deleted Customer',
             'responsible_name' => $task->responsible?->name ?? 'Deleted User',
             'priority' => $task->priority,
             'status' => $task->status,
@@ -91,7 +91,7 @@ class TaskController extends Controller
             $transform = fn (Task $t) => [
                 'id' => $t->id,
                 'service_name' => $t->service?->name ?? 'Deleted Service',
-                'client_name' => $t->client?->user?->name ?? 'Deleted Client',
+                'customer_name' => $t->customer?->user?->name ?? 'Deleted Customer',
                 'responsible_name' => $t->responsible?->name ?? 'Deleted User',
                 'priority' => $t->priority,
                 'due_date' => $t->due_date->format('M d, Y'),
@@ -100,13 +100,13 @@ class TaskController extends Controller
 
             $boardTasks = [
                 'pending' => Task::visibleTo($user)->where('status', 'pending')
-                    ->with(['service:id,name', 'client.user:id,name', 'responsible:id,name'])
+                    ->with(['service:id,name', 'customer.user:id,name', 'responsible:id,name'])
                     ->orderBy('due_date')->limit(50)->get()->map($transform)->values(),
                 'in_progress' => Task::visibleTo($user)->where('status', 'in_progress')
-                    ->with(['service:id,name', 'client.user:id,name', 'responsible:id,name'])
+                    ->with(['service:id,name', 'customer.user:id,name', 'responsible:id,name'])
                     ->orderBy('due_date')->limit(50)->get()->map($transform)->values(),
                 'completed' => Task::visibleTo($user)->where('status', 'completed')
-                    ->with(['service:id,name', 'client.user:id,name', 'responsible:id,name'])
+                    ->with(['service:id,name', 'customer.user:id,name', 'responsible:id,name'])
                     ->latest()->limit(20)->get()->map($transform)->values(),
             ];
         }
@@ -133,7 +133,7 @@ class TaskController extends Controller
 
         return Inertia::render('Tasks/Create', [
             'services' => Service::where('is_active', true)->get(['id', 'name']),
-            'clients' => Client::with('user:id,name')->get()->map(fn ($c) => [
+            'customers' => Customer::with('user:id,name')->get()->map(fn ($c) => [
                 'id' => $c->id,
                 'name' => $c->user?->name ?? 'Unknown',
             ]),
@@ -147,7 +147,7 @@ class TaskController extends Controller
 
         $validated = $request->validate([
             'service_id' => 'required|exists:services,id',
-            'client_id' => 'required|exists:clients,id',
+            'customer_id' => 'required|exists:customers,id',
             'responsible_id' => 'required|exists:users,id',
             'collaborator_ids' => 'nullable|array',
             'collaborator_ids.*' => 'exists:users,id',
@@ -161,7 +161,7 @@ class TaskController extends Controller
         $task = Task::create([
             'created_by' => auth()->id(),
             'service_id' => $validated['service_id'],
-            'client_id' => $validated['client_id'],
+            'customer_id' => $validated['customer_id'],
             'responsible_id' => $validated['responsible_id'],
             'priority' => $validated['priority'],
             'status' => 'pending',
@@ -187,7 +187,7 @@ class TaskController extends Controller
         }
 
         // Notify responsible user and collaborators
-        $task->load(['service:id,name', 'client.user:id,name', 'creator:id,name', 'responsible:id,name']);
+        $task->load(['service:id,name', 'customer.user:id,name', 'creator:id,name', 'responsible:id,name']);
         $recipients = collect();
 
         if ($task->responsible && $task->responsible_id !== auth()->id()) {
@@ -215,7 +215,7 @@ class TaskController extends Controller
         $task->load([
             'creator:id,name',
             'service:id,name,form_schema,completion_schema',
-            'client.user:id,name',
+            'customer.user:id,name',
             'responsible:id,name',
             'collaborators:id,name',
             'attachments.uploader:id,name',
@@ -247,8 +247,8 @@ class TaskController extends Controller
                 'id' => $task->id,
                 'service_id' => $task->service_id,
                 'service_name' => $task->service?->name ?? 'Deleted Service',
-                'client_id' => $task->client_id,
-                'client_name' => $task->client?->user?->name ?? 'Deleted Client',
+                'customer_id' => $task->customer_id,
+                'customer_name' => $task->customer?->user?->name ?? 'Deleted Customer',
                 'responsible_id' => $task->responsible_id,
                 'responsible_name' => $task->responsible?->name ?? 'Deleted User',
                 'collaborators' => $task->collaborators->map(fn ($c) => [
@@ -332,7 +332,7 @@ class TaskController extends Controller
             'task' => [
                 'id' => $task->id,
                 'service_id' => $task->service_id,
-                'client_id' => $task->client_id,
+                'customer_id' => $task->customer_id,
                 'responsible_id' => $task->responsible_id,
                 'collaborator_ids' => $task->collaborators->pluck('id'),
                 'priority' => $task->priority,
@@ -345,7 +345,7 @@ class TaskController extends Controller
                 ]),
             ],
             'services' => Service::where('is_active', true)->get(['id', 'name']),
-            'clients' => Client::with('user:id,name')->get()->map(fn ($c) => [
+            'customers' => Customer::with('user:id,name')->get()->map(fn ($c) => [
                 'id' => $c->id,
                 'name' => $c->user?->name ?? 'Unknown',
             ]),
@@ -360,7 +360,7 @@ class TaskController extends Controller
 
         $validated = $request->validate([
             'service_id' => 'required|exists:services,id',
-            'client_id' => 'required|exists:clients,id',
+            'customer_id' => 'required|exists:customers,id',
             'responsible_id' => 'required|exists:users,id',
             'collaborator_ids' => 'nullable|array',
             'collaborator_ids.*' => 'exists:users,id',
@@ -377,7 +377,7 @@ class TaskController extends Controller
 
         $task->update([
             'service_id' => $validated['service_id'],
-            'client_id' => $validated['client_id'],
+            'customer_id' => $validated['customer_id'],
             'responsible_id' => $validated['responsible_id'],
             'priority' => $validated['priority'],
             'due_date' => $validated['due_date'],
@@ -446,7 +446,7 @@ class TaskController extends Controller
         $task->update(['status' => $validated['status']]);
 
         // Notify task participants of status change
-        $task->load(['service:id,name', 'client.user:id,name', 'responsible:id,name,email', 'collaborators:id,name,email', 'creator:id,name,email']);
+        $task->load(['service:id,name', 'customer.user:id,name', 'responsible:id,name,email', 'collaborators:id,name,email', 'creator:id,name,email']);
         $recipients = $this->getNotifiableUsers($task);
 
         if ($recipients->isNotEmpty()) {
@@ -462,7 +462,7 @@ class TaskController extends Controller
         abort_unless($task->canUserWork($user), 403);
         abort_if($task->status === 'completed', 403, 'Task is already completed.');
 
-        $task->load(['service:id,name,form_schema,completion_schema', 'client.user:id,name']);
+        $task->load(['service:id,name,form_schema,completion_schema', 'customer.user:id,name']);
 
         // Auto-transition to in_progress if pending
         if ($task->status === 'pending') {
@@ -475,7 +475,7 @@ class TaskController extends Controller
             'task' => [
                 'id' => $task->id,
                 'service_name' => $task->service?->name ?? 'Deleted Service',
-                'client_name' => $task->client?->user?->name ?? 'Deleted Client',
+                'customer_name' => $task->customer?->user?->name ?? 'Deleted Customer',
                 'instructions' => $task->instructions,
                 'status' => $task->status,
                 'due_date_display' => $task->due_date->format('M d, Y'),
@@ -615,7 +615,7 @@ class TaskController extends Controller
                 'parent_task_id' => $task->id,
                 'created_by' => $user->id,
                 'service_id' => $task->service_id,
-                'client_id' => $task->client_id,
+                'customer_id' => $task->customer_id,
                 'responsible_id' => $task->responsible_id,
                 'priority' => $task->priority,
                 'status' => 'pending',
@@ -635,7 +635,7 @@ class TaskController extends Controller
         }
 
         // Notify task participants of completion
-        $task->load(['service:id,name', 'client.user:id,name,email', 'responsible:id,name,email', 'collaborators:id,name,email', 'creator:id,name,email']);
+        $task->load(['service:id,name', 'customer.user:id,name,email', 'responsible:id,name,email', 'collaborators:id,name,email', 'creator:id,name,email']);
         $recipients = $this->getNotifiableUsers($task);
 
         if ($recipients->isNotEmpty()) {
@@ -764,10 +764,10 @@ class TaskController extends Controller
         abort_unless($task->created_by === $user->id || $user->hasRole('admin'), 403);
 
         // Collect notification data before deletion
-        $task->load(['service:id,name', 'client.user:id,name,email', 'responsible:id,name,email', 'collaborators:id,name,email']);
+        $task->load(['service:id,name', 'customer.user:id,name,email', 'responsible:id,name,email', 'collaborators:id,name,email']);
         $taskId = $task->id;
         $serviceName = $task->service?->name ?? 'N/A';
-        $clientName = $task->client?->user?->name ?? 'N/A';
+        $customerName = $task->customer?->user?->name ?? 'N/A';
         $deletedBy = $user->name;
         $recipients = $this->getNotifiableUsers($task);
 
@@ -779,7 +779,7 @@ class TaskController extends Controller
 
         // Notify after deletion
         if ($recipients->isNotEmpty()) {
-            Notification::send($recipients, new TaskDeleted($taskId, $serviceName, $clientName, $deletedBy));
+            Notification::send($recipients, new TaskDeleted($taskId, $serviceName, $customerName, $deletedBy));
         }
 
         return redirect()->route('tasks.index')->with('success', 'Task deleted successfully.');
@@ -797,8 +797,8 @@ class TaskController extends Controller
             $participants->push(['id' => $c->id, 'name' => $c->name, 'role' => 'Collaborator']);
         }
 
-        if ($task->client?->user) {
-            $participants->push(['id' => $task->client->user->id, 'name' => $task->client->user->name, 'role' => 'Client']);
+        if ($task->customer?->user) {
+            $participants->push(['id' => $task->customer->user->id, 'name' => $task->customer->user->name, 'role' => 'Client']);
         }
 
         // Add admins
@@ -832,8 +832,8 @@ class TaskController extends Controller
             }
         }
 
-        if ($task->client?->user && $task->client->user->id !== $currentUserId) {
-            $users->push($task->client->user);
+        if ($task->customer?->user && $task->customer->user->id !== $currentUserId) {
+            $users->push($task->customer->user);
         }
 
         return $users->unique('id');
@@ -850,7 +850,7 @@ class TaskController extends Controller
         $isCreator = $task->created_by === $user->id;
         $isResponsible = $task->responsible_id === $user->id;
         $isCollaborator = $task->collaborators()->where('users.id', $user->id)->exists();
-        $isClient = $task->client && $task->client->user_id === $user->id;
+        $isClient = $task->customer && $task->customer->user_id === $user->id;
 
         if (! ($isCreator || $isResponsible || $isCollaborator || $isClient)) {
             abort(403, 'You do not have access to this task.');

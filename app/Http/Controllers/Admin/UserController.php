@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Models\ClientDocument;
+use App\Models\CustomerDocument;
 use App\Models\User;
 use App\Notifications\UserInvitation;
 use Spatie\Permission\Models\Role;
@@ -50,7 +50,7 @@ class UserController extends Controller
         $users->through(function ($user) {
             $roles = $user->getRoleNames();
             $baseRole = $roles->first();
-            $additionalRole = $roles->first(fn ($r) => ! in_array($r, ['employee', 'client', 'admin']));
+            $additionalRole = $roles->first(fn ($r) => ! in_array($r, ['employee', 'customer', 'admin']));
 
             return [
                 'id' => $user->id,
@@ -78,8 +78,8 @@ class UserController extends Controller
         $type = $request->query('type', 'employee');
         $roles = Role::where('name', '!=', 'admin')->pluck('name');
 
-        if ($type === 'client') {
-            return Inertia::render('Admin/Users/CreateClient', ['roles' => $roles]);
+        if ($type === 'customer') {
+            return Inertia::render('Admin/Users/CreateCustomer', ['roles' => $roles]);
         }
 
         return Inertia::render('Admin/Users/CreateEmployee', ['roles' => $roles]);
@@ -92,7 +92,7 @@ class UserController extends Controller
         $rules = [
             'name' => 'required|string|max:255',
             'email' => 'required|string|lowercase|email|max:255|unique:' . User::class,
-            'type' => 'required|string|in:employee,client',
+            'type' => 'required|string|in:employee,customer',
             'role' => 'nullable|string|exists:roles,name',
         ];
 
@@ -135,7 +135,7 @@ class UserController extends Controller
             $rules['submission_date'] = 'nullable|date';
         }
 
-        if ($type === 'client') {
+        if ($type === 'customer') {
             $rules['phone'] = 'nullable|string|max:20';
             $rules['address_line'] = 'nullable|string|max:255';
             $rules['city'] = 'nullable|string|max:255';
@@ -192,8 +192,8 @@ class UserController extends Controller
             $this->storeEmployeeDocuments($employee, $request);
         }
 
-        if ($type === 'client') {
-            $client = $user->client()->create([
+        if ($type === 'customer') {
+            $customer = $user->customer()->create([
                 'phone' => $validated['phone'] ?? null,
                 'address_line' => $validated['address_line'] ?? null,
                 'city' => $validated['city'] ?? null,
@@ -202,7 +202,7 @@ class UserController extends Controller
                 'po_box' => $validated['po_box'] ?? null,
             ]);
 
-            $this->storeClientDocuments($client, $request, $validated);
+            $this->storeCustomerDocuments($customer, $request, $validated);
         }
 
         $token = Password::broker()->createToken($user);
@@ -216,12 +216,12 @@ class UserController extends Controller
     {
         $role = $user->getRoleNames()->first();
 
-        if ($role === 'client') {
-            $user->load('client.documents');
+        if ($role === 'customer') {
+            $user->load('customer.documents');
 
             $documents = [];
-            if ($user->client) {
-                foreach ($user->client->documents as $doc) {
+            if ($user->customer) {
+                foreach ($user->customer->documents as $doc) {
                     $documents[] = [
                         'id' => $doc->id,
                         'type' => $doc->type,
@@ -232,17 +232,17 @@ class UserController extends Controller
                 }
             }
 
-            return Inertia::render('Admin/Users/ShowClient', [
+            return Inertia::render('Admin/Users/ShowCustomer', [
                 'user' => [
                     'id' => $user->id,
                     'name' => $user->name,
                     'email' => $user->email,
-                    'phone' => $user->client?->phone,
-                    'address_line' => $user->client?->address_line,
-                    'city' => $user->client?->city,
-                    'emirate' => $user->client?->emirate,
-                    'country' => $user->client?->country ?? 'UAE',
-                    'po_box' => $user->client?->po_box,
+                    'phone' => $user->customer?->phone,
+                    'address_line' => $user->customer?->address_line,
+                    'city' => $user->customer?->city,
+                    'emirate' => $user->customer?->emirate,
+                    'country' => $user->customer?->country ?? 'UAE',
+                    'po_box' => $user->customer?->po_box,
                     'documents' => $documents,
                     'created_at' => $user->created_at->format('M d, Y'),
                 ],
@@ -300,12 +300,12 @@ class UserController extends Controller
         $allRoles = Role::where('name', '!=', 'admin')->pluck('name');
         $userRoles = $user->getRoleNames()->toArray();
 
-        if ($role === 'client') {
-            $user->load('client.documents');
+        if ($role === 'customer') {
+            $user->load('customer.documents');
 
             $documents = [];
-            if ($user->client) {
-                foreach ($user->client->documents as $doc) {
+            if ($user->customer) {
+                foreach ($user->customer->documents as $doc) {
                     $documents[] = [
                         'id' => $doc->id,
                         'type' => $doc->type,
@@ -316,19 +316,19 @@ class UserController extends Controller
                 }
             }
 
-            return Inertia::render('Admin/Users/EditClient', [
+            return Inertia::render('Admin/Users/EditCustomer', [
                 'allRoles' => $allRoles,
                 'userRoles' => $userRoles,
                 'user' => [
                     'id' => $user->id,
                     'name' => $user->name,
                     'email' => $user->email,
-                    'phone' => $user->client?->phone,
-                    'address_line' => $user->client?->address_line,
-                    'city' => $user->client?->city,
-                    'emirate' => $user->client?->emirate,
-                    'country' => $user->client?->country ?? 'UAE',
-                    'po_box' => $user->client?->po_box,
+                    'phone' => $user->customer?->phone,
+                    'address_line' => $user->customer?->address_line,
+                    'city' => $user->customer?->city,
+                    'emirate' => $user->customer?->emirate,
+                    'country' => $user->customer?->country ?? 'UAE',
+                    'po_box' => $user->customer?->po_box,
                     'documents' => $documents,
                 ],
             ]);
@@ -430,7 +430,7 @@ class UserController extends Controller
             $rules['submission_date'] = 'nullable|date';
         }
 
-        if ($role === 'client') {
+        if ($role === 'customer') {
             $rules['phone'] = 'nullable|string|max:20';
             $rules['address_line'] = 'nullable|string|max:255';
             $rules['city'] = 'nullable|string|max:255';
@@ -445,7 +445,7 @@ class UserController extends Controller
             $rules['additional_documents.*.label'] = 'required|string|max:255';
             $rules['additional_documents.*.file'] = 'required|file|mimes:pdf,jpg,jpeg,png|max:5120';
             $rules['remove_documents'] = 'nullable|array';
-            $rules['remove_documents.*'] = 'integer|exists:client_documents,id';
+            $rules['remove_documents.*'] = 'integer|exists:customer_documents,id';
         }
 
         $validated = $request->validate($rules);
@@ -458,7 +458,7 @@ class UserController extends Controller
                 : []),
         ]);
 
-        // Sync roles — always keep the base role (employee/client)
+        // Sync roles — always keep the base role (employee/customer))
         $newRoles = [$role];
         if (! empty($validated['role'])) {
             $newRoles[] = $validated['role'];
@@ -495,8 +495,8 @@ class UserController extends Controller
             $this->storeEmployeeDocuments($employee, $request);
         }
 
-        if ($role === 'client') {
-            $client = $user->client()->updateOrCreate(
+        if ($role === 'customer') {
+            $customer = $user->customer()->updateOrCreate(
                 ['user_id' => $user->id],
                 [
                     'phone' => $validated['phone'] ?? null,
@@ -510,7 +510,7 @@ class UserController extends Controller
 
             // Remove documents marked for deletion
             if (! empty($validated['remove_documents'])) {
-                $docsToRemove = $client->documents()->whereIn('id', $validated['remove_documents'])->get();
+                $docsToRemove = $customer->documents()->whereIn('id', $validated['remove_documents'])->get();
                 foreach ($docsToRemove as $doc) {
                     Storage::disk('public')->delete($doc->file_path);
                     $doc->delete();
@@ -520,16 +520,16 @@ class UserController extends Controller
             // Replace KYC documents if new files uploaded
             foreach (['emirates_id', 'passport', 'trade_license', 'moa'] as $docType) {
                 if ($request->hasFile($docType)) {
-                    $existing = $client->documents()->where('type', $docType)->first();
+                    $existing = $customer->documents()->where('type', $docType)->first();
                     if ($existing) {
                         Storage::disk('public')->delete($existing->file_path);
                         $existing->delete();
                     }
 
                     $file = $request->file($docType);
-                    $path = $file->store("client-documents/{$client->id}", 'public');
+                    $path = $file->store("customer-documents/{$customer->id}", 'public');
 
-                    $client->documents()->create([
+                    $customer->documents()->create([
                         'type' => $docType,
                         'file_path' => $path,
                         'original_name' => $file->getClientOriginalName(),
@@ -542,8 +542,8 @@ class UserController extends Controller
                 foreach ($validated['additional_documents'] as $index => $additionalDoc) {
                     $file = $request->file("additional_documents.{$index}.file");
                     if ($file) {
-                        $path = $file->store("client-documents/{$client->id}", 'public');
-                        $client->documents()->create([
+                        $path = $file->store("customer-documents/{$customer->id}", 'public');
+                        $customer->documents()->create([
                             'type' => 'additional',
                             'label' => $additionalDoc['label'],
                             'file_path' => $path,
@@ -564,9 +564,9 @@ class UserController extends Controller
             return back()->withErrors(['error' => 'You cannot delete your own account.']);
         }
 
-        // Clean up client documents from storage
-        if ($user->client) {
-            foreach ($user->client->documents as $doc) {
+        // Clean up customer documents from storage
+        if ($user->customer) {
+            foreach ($user->customer->documents as $doc) {
                 Storage::disk('public')->delete($doc->file_path);
             }
         }
@@ -612,14 +612,14 @@ class UserController extends Controller
         $employee->save();
     }
 
-    private function storeClientDocuments($client, Request $request, array $validated): void
+    private function storeCustomerDocuments($customer, Request $request, array $validated): void
     {
         foreach (['emirates_id', 'passport', 'trade_license', 'moa'] as $docType) {
             if ($request->hasFile($docType)) {
                 $file = $request->file($docType);
-                $path = $file->store("client-documents/{$client->id}", 'public');
+                $path = $file->store("customer-documents/{$customer->id}", 'public');
 
-                $client->documents()->create([
+                $customer->documents()->create([
                     'type' => $docType,
                     'file_path' => $path,
                     'original_name' => $file->getClientOriginalName(),
@@ -631,8 +631,8 @@ class UserController extends Controller
             foreach ($validated['additional_documents'] as $index => $additionalDoc) {
                 $file = $request->file("additional_documents.{$index}.file");
                 if ($file) {
-                    $path = $file->store("client-documents/{$client->id}", 'public');
-                    $client->documents()->create([
+                    $path = $file->store("customer-documents/{$customer->id}", 'public');
+                    $customer->documents()->create([
                         'type' => 'additional',
                         'label' => $additionalDoc['label'],
                         'file_path' => $path,

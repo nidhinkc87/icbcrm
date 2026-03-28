@@ -14,7 +14,7 @@ type TaskStatus = 'pending' | 'in_progress' | 'completed';
 interface TaskRow {
     id: number;
     service_name: string;
-    client_name: string;
+    customer_name: string;
     responsible_name: string;
     priority: TaskPriority;
     status: TaskStatus;
@@ -26,7 +26,7 @@ interface TaskRow {
 interface BoardTask {
     id: number;
     service_name: string;
-    client_name: string;
+    customer_name: string;
     responsible_name: string;
     priority: TaskPriority;
     due_date: string;
@@ -164,9 +164,9 @@ export default function Index({ tasks, filters, counts, can_create, board_tasks 
             ),
         },
         {
-            key: 'client_name',
+            key: 'customer_name',
             label: 'Client',
-            render: (row) => <span className="text-gray-700">{row.client_name}</span>,
+            render: (row) => <span className="text-gray-700">{row.customer_name}</span>,
         },
         {
             key: 'responsible_name',

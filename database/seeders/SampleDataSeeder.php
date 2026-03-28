@@ -2,7 +2,7 @@
 
 namespace Database\Seeders;
 
-use App\Models\Client;
+use App\Models\Customer;
 use App\Models\Employee;
 use App\Models\Service;
 use App\Models\ServiceSubmission;
@@ -127,8 +127,8 @@ class SampleDataSeeder extends Seeder
         }
 
         // Create Clients
-        $clients = [];
-        $clientData = [
+        $customers = [];
+        $customerData = [
             ['name' => 'Al Maktoum Trading LLC', 'email' => 'almaktoum@example.com', 'city' => 'Dubai', 'emirate' => 'Dubai'],
             ['name' => 'Gulf Star Enterprises', 'email' => 'gulfstar@example.com', 'city' => 'Abu Dhabi', 'emirate' => 'Abu Dhabi'],
             ['name' => 'Emirates Tech Solutions', 'email' => 'emiratestech@example.com', 'city' => 'Sharjah', 'emirate' => 'Sharjah'],
@@ -136,22 +136,22 @@ class SampleDataSeeder extends Seeder
             ['name' => 'Oasis Hospitality Group', 'email' => 'oasis@example.com', 'city' => 'Ras Al Khaimah', 'emirate' => 'Ras Al Khaimah'],
         ];
 
-        foreach ($clientData as $cd) {
+        foreach ($customerData as $cd) {
             $user = User::create([
                 'name' => $cd['name'],
                 'email' => $cd['email'],
                 'password' => Hash::make('password'),
                 'email_verified_at' => now(),
             ]);
-            $user->assignRole('client');
-            $client = Client::create([
+            $user->assignRole('customer');
+            $customer = Customer::create([
                 'user_id' => $user->id,
                 'phone' => '+971 4 ' . rand(100, 999) . ' ' . rand(1000, 9999),
                 'city' => $cd['city'],
                 'emirate' => $cd['emirate'],
                 'country' => 'UAE',
             ]);
-            $clients[] = $client;
+            $customers[] = $customer;
         }
 
         // Create Tasks with varied statuses, priorities, and dates
@@ -161,28 +161,28 @@ class SampleDataSeeder extends Seeder
 
         $taskConfigs = [
             // Completed tasks (oldest)
-            ['service' => 0, 'client' => 0, 'employee' => 0, 'status' => 'completed', 'priority' => 'high', 'days_ago' => 20, 'due_days_ago' => 15],
-            ['service' => 1, 'client' => 1, 'employee' => 1, 'status' => 'completed', 'priority' => 'medium', 'days_ago' => 18, 'due_days_ago' => 10],
-            ['service' => 0, 'client' => 2, 'employee' => 0, 'status' => 'completed', 'priority' => 'low', 'days_ago' => 15, 'due_days_ago' => 8],
-            ['service' => 3, 'client' => 3, 'employee' => 1, 'status' => 'completed', 'priority' => 'urgent', 'days_ago' => 12, 'due_days_ago' => 5],
-            ['service' => 2, 'client' => 4, 'employee' => 2, 'status' => 'completed', 'priority' => 'medium', 'days_ago' => 10, 'due_days_ago' => 3],
-            ['service' => 0, 'client' => 0, 'employee' => 2, 'status' => 'completed', 'priority' => 'high', 'days_ago' => 8, 'due_days_ago' => 1],
+            ['service' => 0, 'customer' => 0, 'employee' => 0, 'status' => 'completed', 'priority' => 'high', 'days_ago' => 20, 'due_days_ago' => 15],
+            ['service' => 1, 'customer' => 1, 'employee' => 1, 'status' => 'completed', 'priority' => 'medium', 'days_ago' => 18, 'due_days_ago' => 10],
+            ['service' => 0, 'customer' => 2, 'employee' => 0, 'status' => 'completed', 'priority' => 'low', 'days_ago' => 15, 'due_days_ago' => 8],
+            ['service' => 3, 'customer' => 3, 'employee' => 1, 'status' => 'completed', 'priority' => 'urgent', 'days_ago' => 12, 'due_days_ago' => 5],
+            ['service' => 2, 'customer' => 4, 'employee' => 2, 'status' => 'completed', 'priority' => 'medium', 'days_ago' => 10, 'due_days_ago' => 3],
+            ['service' => 0, 'customer' => 0, 'employee' => 2, 'status' => 'completed', 'priority' => 'high', 'days_ago' => 8, 'due_days_ago' => 1],
             // In progress tasks
-            ['service' => 1, 'client' => 0, 'employee' => 0, 'status' => 'in_progress', 'priority' => 'high', 'days_ago' => 5, 'due_days' => 3],
-            ['service' => 0, 'client' => 1, 'employee' => 1, 'status' => 'in_progress', 'priority' => 'urgent', 'days_ago' => 4, 'due_days' => 5],
-            ['service' => 3, 'client' => 2, 'employee' => 2, 'status' => 'in_progress', 'priority' => 'medium', 'days_ago' => 3, 'due_days' => 7],
-            ['service' => 2, 'client' => 3, 'employee' => 0, 'status' => 'in_progress', 'priority' => 'low', 'days_ago' => 2, 'due_days' => 10],
+            ['service' => 1, 'customer' => 0, 'employee' => 0, 'status' => 'in_progress', 'priority' => 'high', 'days_ago' => 5, 'due_days' => 3],
+            ['service' => 0, 'customer' => 1, 'employee' => 1, 'status' => 'in_progress', 'priority' => 'urgent', 'days_ago' => 4, 'due_days' => 5],
+            ['service' => 3, 'customer' => 2, 'employee' => 2, 'status' => 'in_progress', 'priority' => 'medium', 'days_ago' => 3, 'due_days' => 7],
+            ['service' => 2, 'customer' => 3, 'employee' => 0, 'status' => 'in_progress', 'priority' => 'low', 'days_ago' => 2, 'due_days' => 10],
             // Overdue in-progress
-            ['service' => 0, 'client' => 4, 'employee' => 1, 'status' => 'in_progress', 'priority' => 'high', 'days_ago' => 10, 'due_days_ago' => 2],
-            ['service' => 1, 'client' => 2, 'employee' => 2, 'status' => 'in_progress', 'priority' => 'urgent', 'days_ago' => 8, 'due_days_ago' => 1],
+            ['service' => 0, 'customer' => 4, 'employee' => 1, 'status' => 'in_progress', 'priority' => 'high', 'days_ago' => 10, 'due_days_ago' => 2],
+            ['service' => 1, 'customer' => 2, 'employee' => 2, 'status' => 'in_progress', 'priority' => 'urgent', 'days_ago' => 8, 'due_days_ago' => 1],
             // Pending tasks
-            ['service' => 0, 'client' => 0, 'employee' => 0, 'status' => 'pending', 'priority' => 'medium', 'days_ago' => 1, 'due_days' => 14],
-            ['service' => 2, 'client' => 1, 'employee' => 1, 'status' => 'pending', 'priority' => 'high', 'days_ago' => 1, 'due_days' => 7],
-            ['service' => 3, 'client' => 4, 'employee' => 2, 'status' => 'pending', 'priority' => 'low', 'days_ago' => 0, 'due_days' => 21],
-            ['service' => 1, 'client' => 3, 'employee' => 0, 'status' => 'pending', 'priority' => 'urgent', 'days_ago' => 0, 'due_days' => 2],
+            ['service' => 0, 'customer' => 0, 'employee' => 0, 'status' => 'pending', 'priority' => 'medium', 'days_ago' => 1, 'due_days' => 14],
+            ['service' => 2, 'customer' => 1, 'employee' => 1, 'status' => 'pending', 'priority' => 'high', 'days_ago' => 1, 'due_days' => 7],
+            ['service' => 3, 'customer' => 4, 'employee' => 2, 'status' => 'pending', 'priority' => 'low', 'days_ago' => 0, 'due_days' => 21],
+            ['service' => 1, 'customer' => 3, 'employee' => 0, 'status' => 'pending', 'priority' => 'urgent', 'days_ago' => 0, 'due_days' => 2],
             // Assigned to test employee
-            ['service' => 0, 'client' => 0, 'employee' => 3, 'status' => 'pending', 'priority' => 'high', 'days_ago' => 0, 'due_days' => 5],
-            ['service' => 1, 'client' => 1, 'employee' => 3, 'status' => 'in_progress', 'priority' => 'medium', 'days_ago' => 3, 'due_days' => 4],
+            ['service' => 0, 'customer' => 0, 'employee' => 3, 'status' => 'pending', 'priority' => 'high', 'days_ago' => 0, 'due_days' => 5],
+            ['service' => 1, 'customer' => 1, 'employee' => 3, 'status' => 'in_progress', 'priority' => 'medium', 'days_ago' => 3, 'due_days' => 4],
         ];
 
         $instructions = [
@@ -201,7 +201,7 @@ class SampleDataSeeder extends Seeder
             $task = Task::create([
                 'created_by' => $admin->id,
                 'service_id' => $services[$tc['service']]->id,
-                'client_id' => $clients[$tc['client']]->id,
+                'customer_id' => $customers[$tc['customer']]->id,
                 'responsible_id' => $employees[$tc['employee']]->id,
                 'priority' => $tc['priority'],
                 'status' => $tc['status'],

@@ -20,7 +20,7 @@ class Task extends Model
         'parent_task_id',
         'created_by',
         'service_id',
-        'client_id',
+        'customer_id',
         'responsible_id',
         'priority',
         'status',
@@ -45,9 +45,9 @@ class Task extends Model
         return $this->belongsTo(Service::class);
     }
 
-    public function client(): BelongsTo
+    public function customer(): BelongsTo
     {
-        return $this->belongsTo(Client::class);
+        return $this->belongsTo(Customer::class);
     }
 
     public function responsible(): BelongsTo
@@ -112,7 +112,7 @@ class Task extends Model
             $q->where('created_by', $user->id)
               ->orWhere('responsible_id', $user->id)
               ->orWhereHas('collaborators', fn ($cq) => $cq->where('users.id', $user->id))
-              ->orWhereHas('client', fn ($cq) => $cq->where('user_id', $user->id));
+              ->orWhereHas('customer', fn ($cq) => $cq->where('user_id', $user->id));
         });
     }
 }

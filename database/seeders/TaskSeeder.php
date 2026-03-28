@@ -2,7 +2,7 @@
 
 namespace Database\Seeders;
 
-use App\Models\Client;
+use App\Models\Customer;
 use App\Models\Service;
 use App\Models\Task;
 use App\Models\TaskComment;
@@ -29,18 +29,18 @@ class TaskSeeder extends Seeder
         $khalid = User::where('email', 'khalid@icbcrm.com')->first();
 
         $services = Service::pluck('id', 'name');
-        $clients = Client::with('user')->get()->keyBy(fn ($c) => $c->user->email);
+        $customers = Customer::with('user')->get()->keyBy(fn ($c) => $c->user->email);
 
-        $alMaktoum = $clients['info@almaktoumtrading.ae'];
-        $gulfStar = $clients['accounts@gulfstar.ae'];
-        $emiratesTech = $clients['finance@emiratestech.ae'];
-        $falcon = $clients['ops@falconlogistics.ae'];
-        $oasis = $clients['admin@oasishospitality.ae'];
-        $zenith = $clients['info@zenithre.ae'];
-        $pearl = $clients['accounts@pearlmarine.ae'];
-        $burj = $clients['finance@burjcontracting.ae'];
-        $noor = $clients['admin@noormedical.ae'];
-        $sands = $clients['info@sandsfb.ae'];
+        $alMaktoum = $customers['info@almaktoumtrading.ae'];
+        $gulfStar = $customers['accounts@gulfstar.ae'];
+        $emiratesTech = $customers['finance@emiratestech.ae'];
+        $falcon = $customers['ops@falconlogistics.ae'];
+        $oasis = $customers['admin@oasishospitality.ae'];
+        $zenith = $customers['info@zenithre.ae'];
+        $pearl = $customers['accounts@pearlmarine.ae'];
+        $burj = $customers['finance@burjcontracting.ae'];
+        $noor = $customers['admin@noormedical.ae'];
+        $sands = $customers['info@sandsfb.ae'];
 
         $now = Carbon::now();
 
@@ -52,7 +52,7 @@ class TaskSeeder extends Seeder
         $t1 = Task::create([
             'created_by' => $admin->id,
             'service_id' => $services['VAT Registration'],
-            'client_id' => $alMaktoum->id,
+            'customer_id' => $alMaktoum->id,
             'responsible_id' => $sarah->id,
             'priority' => 'high',
             'status' => 'completed',
@@ -70,7 +70,7 @@ class TaskSeeder extends Seeder
         $t2 = Task::create([
             'created_by' => $admin->id,
             'service_id' => $services['Trade License Renewal'],
-            'client_id' => $gulfStar->id,
+            'customer_id' => $gulfStar->id,
             'responsible_id' => $fatima->id,
             'priority' => 'medium',
             'status' => 'completed',
@@ -88,7 +88,7 @@ class TaskSeeder extends Seeder
         $t3 = Task::create([
             'created_by' => $rashid->id,
             'service_id' => $services['External Audit'],
-            'client_id' => $emiratesTech->id,
+            'customer_id' => $emiratesTech->id,
             'responsible_id' => $mohammed->id,
             'priority' => 'high',
             'status' => 'completed',
@@ -107,7 +107,7 @@ class TaskSeeder extends Seeder
         $t4 = Task::create([
             'created_by' => $admin->id,
             'service_id' => $services['Bookkeeping'],
-            'client_id' => $sands->id,
+            'customer_id' => $sands->id,
             'responsible_id' => $aisha->id,
             'priority' => 'medium',
             'status' => 'completed',
@@ -123,7 +123,7 @@ class TaskSeeder extends Seeder
         $t5 = Task::create([
             'created_by' => $rashid->id,
             'service_id' => $services['Corporate Tax Registration'],
-            'client_id' => $falcon->id,
+            'customer_id' => $falcon->id,
             'responsible_id' => $yusuf->id,
             'priority' => 'high',
             'status' => 'completed',
@@ -144,7 +144,7 @@ class TaskSeeder extends Seeder
         $t6 = Task::create([
             'created_by' => $admin->id,
             'service_id' => $services['VAT Return Filing'],
-            'client_id' => $alMaktoum->id,
+            'customer_id' => $alMaktoum->id,
             'responsible_id' => $omar->id,
             'priority' => 'high',
             'status' => 'in_progress',
@@ -174,7 +174,7 @@ class TaskSeeder extends Seeder
         $t7 = Task::create([
             'created_by' => $rashid->id,
             'service_id' => $services['ESR Notification Filing'],
-            'client_id' => $zenith->id,
+            'customer_id' => $zenith->id,
             'responsible_id' => $yusuf->id,
             'priority' => 'medium',
             'status' => 'in_progress',
@@ -188,7 +188,7 @@ class TaskSeeder extends Seeder
         $t8 = Task::create([
             'created_by' => $admin->id,
             'service_id' => $services['Company Formation - Mainland'],
-            'client_id' => $burj->id,
+            'customer_id' => $burj->id,
             'responsible_id' => $fatima->id,
             'priority' => 'medium',
             'status' => 'in_progress',
@@ -216,7 +216,7 @@ class TaskSeeder extends Seeder
         $t9 = Task::create([
             'created_by' => $admin->id,
             'service_id' => $services['FTA Penalty Reconsideration'],
-            'client_id' => $oasis->id,
+            'customer_id' => $oasis->id,
             'responsible_id' => $sarah->id,
             'priority' => 'urgent',
             'status' => 'in_progress',
@@ -245,7 +245,7 @@ class TaskSeeder extends Seeder
         $t10 = Task::create([
             'created_by' => $rashid->id,
             'service_id' => $services['Transfer Pricing'],
-            'client_id' => $gulfStar->id,
+            'customer_id' => $gulfStar->id,
             'responsible_id' => $yusuf->id,
             'priority' => 'high',
             'status' => 'in_progress',
@@ -271,7 +271,7 @@ class TaskSeeder extends Seeder
         $t11 = Task::create([
             'created_by' => $admin->id,
             'service_id' => $services['Financial Statements Preparation'],
-            'client_id' => $pearl->id,
+            'customer_id' => $pearl->id,
             'responsible_id' => $aisha->id,
             'priority' => 'medium',
             'status' => 'in_progress',
@@ -290,7 +290,7 @@ class TaskSeeder extends Seeder
         $t12 = Task::create([
             'created_by' => $admin->id,
             'service_id' => $services['Voluntary Disclosure'],
-            'client_id' => $falcon->id,
+            'customer_id' => $falcon->id,
             'responsible_id' => $omar->id,
             'priority' => 'urgent',
             'status' => 'in_progress',
@@ -316,7 +316,7 @@ class TaskSeeder extends Seeder
         $t13 = Task::create([
             'created_by' => $admin->id,
             'service_id' => $services['Employment Visa Processing'],
-            'client_id' => $noor->id,
+            'customer_id' => $noor->id,
             'responsible_id' => $priya->id,
             'priority' => 'high',
             'status' => 'in_progress',
@@ -336,7 +336,7 @@ class TaskSeeder extends Seeder
         $t14 = Task::create([
             'created_by' => $rashid->id,
             'service_id' => $services['Corporate Tax Return Filing'],
-            'client_id' => $emiratesTech->id,
+            'customer_id' => $emiratesTech->id,
             'responsible_id' => $yusuf->id,
             'priority' => 'high',
             'status' => 'pending',
@@ -350,7 +350,7 @@ class TaskSeeder extends Seeder
         $t15 = Task::create([
             'created_by' => $admin->id,
             'service_id' => $services['VAT Return Filing'],
-            'client_id' => $zenith->id,
+            'customer_id' => $zenith->id,
             'responsible_id' => $omar->id,
             'priority' => 'medium',
             'status' => 'pending',
@@ -363,7 +363,7 @@ class TaskSeeder extends Seeder
         $t16 = Task::create([
             'created_by' => $admin->id,
             'service_id' => $services['Golden Visa Application'],
-            'client_id' => $alMaktoum->id,
+            'customer_id' => $alMaktoum->id,
             'responsible_id' => $priya->id,
             'priority' => 'low',
             'status' => 'pending',
@@ -376,7 +376,7 @@ class TaskSeeder extends Seeder
         $t17 = Task::create([
             'created_by' => $rashid->id,
             'service_id' => $services['AML Compliance Setup'],
-            'client_id' => $sands->id,
+            'customer_id' => $sands->id,
             'responsible_id' => $fatima->id,
             'priority' => 'medium',
             'status' => 'pending',
@@ -389,7 +389,7 @@ class TaskSeeder extends Seeder
         $t18 = Task::create([
             'created_by' => $rashid->id,
             'service_id' => $services['Internal Audit'],
-            'client_id' => $burj->id,
+            'customer_id' => $burj->id,
             'responsible_id' => $khalid->id,
             'priority' => 'low',
             'status' => 'pending',
@@ -404,7 +404,7 @@ class TaskSeeder extends Seeder
             'parent_task_id' => $t4->id,
             'created_by' => $admin->id,
             'service_id' => $services['Bookkeeping'],
-            'client_id' => $sands->id,
+            'customer_id' => $sands->id,
             'responsible_id' => $aisha->id,
             'priority' => 'medium',
             'status' => 'pending',
@@ -417,7 +417,7 @@ class TaskSeeder extends Seeder
         $t20 = Task::create([
             'created_by' => $admin->id,
             'service_id' => $services['Tax Residency Certificate'],
-            'client_id' => $oasis->id,
+            'customer_id' => $oasis->id,
             'responsible_id' => $sarah->id,
             'priority' => 'low',
             'status' => 'pending',

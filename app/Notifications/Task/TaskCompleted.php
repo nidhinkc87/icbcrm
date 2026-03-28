@@ -26,7 +26,7 @@ class TaskCompleted extends Notification implements ShouldQueue
     {
         $appName = config('app.name');
         $serviceName = $this->task->service?->name ?? 'N/A';
-        $clientName = $this->task->client?->user?->name ?? 'N/A';
+        $customerName = $this->task->customer?->user?->name ?? 'N/A';
         $completedBy = auth()->user()?->name ?? 'System';
         $url = route('tasks.show', $this->task->id);
 
@@ -38,7 +38,7 @@ class TaskCompleted extends Notification implements ShouldQueue
             ->line("**Task Details:**")
             ->line("- **Task ID:** #{$this->task->id}")
             ->line("- **Service:** {$serviceName}")
-            ->line("- **Client:** {$clientName}")
+            ->line("- **Customer:** {$customerName}")
             ->line("- **Priority:** " . ucfirst($this->task->priority))
             ->line("- **Due Date:** " . $this->task->due_date->format('M d, Y'))
             ->line("- **Completed On:** " . now()->format('M d, Y'));

@@ -29,11 +29,11 @@ class DatabaseSeeder extends Seeder
         ]);
         $employee->assignRole('employee');
 
-        $client = User::factory()->create([
+        $customer = User::factory()->create([
             'name' => 'Test Client',
             'email' => 'client@icbcrm.com',
         ]);
-        $client->assignRole('client');
+        $customer->assignRole('customer');
 
         $this->call(SampleDataSeeder::class);
     }

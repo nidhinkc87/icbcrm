@@ -43,7 +43,7 @@ class TaskStatusChanged extends Notification implements ShouldQueue
             ->line("**Task Details:**")
             ->line("- **Task ID:** #{$this->task->id}")
             ->line("- **Service:** {$serviceName}")
-            ->line("- **Client:** " . ($this->task->client?->user?->name ?? 'N/A'))
+            ->line("- **Customer:** " . ($this->task->customer?->user?->name ?? 'N/A'))
             ->line("- **Responsible:** " . ($this->task->responsible?->name ?? 'N/A'))
             ->line("- **Due Date:** " . $this->task->due_date->format('M d, Y'))
             ->action('View Task', $url)

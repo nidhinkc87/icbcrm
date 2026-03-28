@@ -5,7 +5,7 @@ type TaskPriority = 'low' | 'medium' | 'high' | 'urgent';
 interface TaskCardData {
     id: number;
     service_name: string;
-    client_name: string;
+    customer_name: string;
     responsible_name: string;
     priority: TaskPriority;
     due_date: string;
@@ -43,7 +43,7 @@ export default function TaskCard({ task }: { task: TaskCardData }) {
                 <div className={`mt-1 h-2 w-2 shrink-0 rounded-full ${priorityDot[task.priority]}`} />
                 <div className="min-w-0 flex-1">
                     <p className="text-sm font-medium text-gray-900 truncate">{task.service_name}</p>
-                    <p className="mt-0.5 text-xs text-gray-500 truncate">{task.client_name}</p>
+                    <p className="mt-0.5 text-xs text-gray-500 truncate">{task.customer_name}</p>
                 </div>
             </div>
             <div className="mt-3 flex items-center justify-between">

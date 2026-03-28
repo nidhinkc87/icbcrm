@@ -59,7 +59,7 @@ export default function Login({
                                 Streamline your business operations with confidence
                             </h2>
                             <p className="mt-4 text-emerald-200 text-base leading-relaxed">
-                                Manage tasks, track employee performance, handle client services, and stay on top of compliance — all in one place.
+                                Manage tasks, track employee performance, handle customer services, and stay on top of compliance — all in one place.
                             </p>
 
                             <div className="mt-10 grid grid-cols-3 gap-6">

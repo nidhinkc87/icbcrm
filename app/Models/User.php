@@ -31,9 +31,9 @@ class User extends Authenticatable
         return $this->hasOne(Employee::class);
     }
 
-    public function client(): HasOne
+    public function customer(): HasOne
     {
-        return $this->hasOne(Client::class);
+        return $this->hasOne(Customer::class);
     }
 
     public function assignedTasks(): HasMany

@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Client;
+use App\Models\Customer;
 use App\Models\Service;
 use App\Models\ServiceSubmission;
 use App\Models\Task;
@@ -19,12 +19,12 @@ class DashboardController extends Controller
     public function index(Request $request): Response
     {
         $user = $request->user();
-        $role = $user->roles->first()?->name ?? 'client';
+        $role = $user->roles->first()?->name ?? 'customer';
 
         $data = match ($role) {
             'admin' => $this->adminDashboard($user),
             'employee' => $this->employeeDashboard($user),
-            default => $this->clientDashboard($user),
+            default => $this->customerDashboard($user),
         };
 
         return Inertia::render('Dashboard', array_merge(['role' => $role], $data));
@@ -41,7 +41,7 @@ class DashboardController extends Controller
             'pending_tasks' => Task::where('status', 'pending')->count(),
             'in_progress_tasks' => Task::where('status', 'in_progress')->count(),
             'overdue_tasks' => Task::where('status', '!=', 'completed')->where('due_date', '<', $today)->count(),
-            'total_clients' => Client::count(),
+            'total_customers' => Customer::count(),
             'total_employees' => User::role('employee')->count(),
         ];
 
@@ -136,14 +136,14 @@ class DashboardController extends Controller
         // Overdue tasks
         $overdueTasks = Task::where('status', '!=', 'completed')
             ->where('due_date', '<', $today)
-            ->with(['service:id,name', 'client.user:id,name', 'responsible:id,name'])
+            ->with(['service:id,name', 'customer.user:id,name', 'responsible:id,name'])
             ->orderBy('due_date')
             ->limit(10)
             ->get()
             ->map(fn (Task $t) => [
                 'id' => $t->id,
                 'service_name' => $t->service?->name ?? 'Unknown',
-                'client_name' => $t->client?->user?->name ?? 'Unknown',
+                'customer_name' => $t->customer?->user?->name ?? 'Unknown',
                 'responsible_name' => $t->responsible?->name ?? 'Unknown',
                 'due_date' => $t->due_date->format('M d, Y'),
                 'days_overdue' => $t->due_date->diffInDays($today),
@@ -238,14 +238,14 @@ class DashboardController extends Controller
             ->where('status', '!=', 'completed')
             ->where('due_date', '>=', $today)
             ->where('due_date', '<=', $today->copy()->addDays(7))
-            ->with(['service:id,name', 'client.user:id,name'])
+            ->with(['service:id,name', 'customer.user:id,name'])
             ->orderBy('due_date')
             ->limit(10)
             ->get()
             ->map(fn (Task $t) => [
                 'id' => $t->id,
                 'service_name' => $t->service?->name ?? 'Unknown',
-                'client_name' => $t->client?->user?->name ?? 'Unknown',
+                'customer_name' => $t->customer?->user?->name ?? 'Unknown',
                 'due_date' => $t->due_date->format('M d, Y'),
                 'priority' => $t->priority,
                 'status' => $t->status,
@@ -255,14 +255,14 @@ class DashboardController extends Controller
         $overdueTasks = Task::where('responsible_id', $user->id)
             ->where('status', '!=', 'completed')
             ->where('due_date', '<', $today)
-            ->with(['service:id,name', 'client.user:id,name'])
+            ->with(['service:id,name', 'customer.user:id,name'])
             ->orderBy('due_date')
             ->limit(10)
             ->get()
             ->map(fn (Task $t) => [
                 'id' => $t->id,
                 'service_name' => $t->service?->name ?? 'Unknown',
-                'client_name' => $t->client?->user?->name ?? 'Unknown',
+                'customer_name' => $t->customer?->user?->name ?? 'Unknown',
                 'due_date' => $t->due_date->format('M d, Y'),
                 'days_overdue' => $t->due_date->diffInDays($today),
                 'priority' => $t->priority,
@@ -271,14 +271,14 @@ class DashboardController extends Controller
         // Collaborator tasks (tasks where this user is a collaborator, not responsible)
         $collaboratorTasks = Task::whereHas('collaborators', fn ($q) => $q->where('users.id', $user->id))
             ->where('responsible_id', '!=', $user->id)
-            ->with(['service:id,name', 'client.user:id,name', 'responsible:id,name'])
+            ->with(['service:id,name', 'customer.user:id,name', 'responsible:id,name'])
             ->latest()
             ->limit(10)
             ->get()
             ->map(fn (Task $t) => [
                 'id' => $t->id,
                 'service_name' => $t->service?->name ?? 'Unknown',
-                'client_name' => $t->client?->user?->name ?? 'Unknown',
+                'customer_name' => $t->customer?->user?->name ?? 'Unknown',
                 'responsible_name' => $t->responsible?->name ?? 'Unknown',
                 'status' => $t->status,
                 'due_date' => $t->due_date->format('M d, Y'),
@@ -315,12 +315,12 @@ class DashboardController extends Controller
         ];
     }
 
-    private function clientDashboard(User $user): array
+    private function customerDashboard(User $user): array
     {
         $today = Carbon::today();
-        $client = $user->client;
+        $customer = $user->customer;
 
-        if (! $client) {
+        if (! $customer) {
             return [
                 'kpis' => ['total_tasks' => 0, 'completed' => 0, 'in_progress' => 0, 'pending' => 0],
                 'charts' => ['status_distribution' => []],
@@ -329,7 +329,7 @@ class DashboardController extends Controller
             ];
         }
 
-        $baseQuery = Task::where('client_id', $client->id);
+        $baseQuery = Task::where('customer_id', $customer->id);
 
         $kpis = [
             'total_tasks' => (clone $baseQuery)->count(),
@@ -338,14 +338,14 @@ class DashboardController extends Controller
             'pending' => (clone $baseQuery)->where('status', 'pending')->count(),
         ];
 
-        $statusDistribution = Task::where('client_id', $client->id)
+        $statusDistribution = Task::where('customer_id', $customer->id)
             ->selectRaw('status, count(*) as count')
             ->groupBy('status')
             ->pluck('count', 'status')
             ->map(fn ($count, $status) => ['name' => ucfirst(str_replace('_', ' ', $status)), 'value' => $count])
             ->values();
 
-        $serviceProgress = Task::where('client_id', $client->id)
+        $serviceProgress = Task::where('customer_id', $customer->id)
             ->with('service:id,name')
             ->get()
             ->groupBy('service_id')
@@ -361,7 +361,7 @@ class DashboardController extends Controller
             })
             ->values();
 
-        $recentActivity = Task::where('client_id', $client->id)
+        $recentActivity = Task::where('customer_id', $customer->id)
             ->with(['service:id,name'])
             ->latest('updated_at')
             ->limit(10)

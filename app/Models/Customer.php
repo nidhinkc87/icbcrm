@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-class Client extends Model
+class Customer extends Model
 {
     protected $fillable = [
         'user_id',
@@ -25,6 +25,6 @@ class Client extends Model
 
     public function documents(): HasMany
     {
-        return $this->hasMany(ClientDocument::class);
+        return $this->hasMany(CustomerDocument::class);
     }
 }

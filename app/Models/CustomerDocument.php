@@ -5,18 +5,18 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-class ClientDocument extends Model
+class CustomerDocument extends Model
 {
     protected $fillable = [
-        'client_id',
+        'customer_id',
         'type',
         'label',
         'file_path',
         'original_name',
     ];
 
-    public function client(): BelongsTo
+    public function customer(): BelongsTo
     {
-        return $this->belongsTo(Client::class);
+        return $this->belongsTo(Customer::class);
     }
 }

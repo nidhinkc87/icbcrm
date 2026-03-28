@@ -9,11 +9,11 @@ import { FormEventHandler, useState, useRef } from 'react';
 
 interface Option { id: number; name: string; }
 interface ExistingAttachment { id: number; original_name: string; url: string; }
-interface TaskData { id: number; service_id: number; client_id: number; responsible_id: number; collaborator_ids: number[]; priority: string; due_date: string; instructions: string | null; attachments: ExistingAttachment[]; }
-interface Props { task: TaskData; services: Option[]; clients: Option[]; employees: Option[]; }
+interface TaskData { id: number; service_id: number; customer_id: number; responsible_id: number; collaborator_ids: number[]; priority: string; due_date: string; instructions: string | null; attachments: ExistingAttachment[]; }
+interface Props { task: TaskData; services: Option[]; customers: Option[]; employees: Option[]; }
 
-export default function Edit({ task, services, clients, employees }: Props) {
-    const [data, setData] = useState({ service_id: String(task.service_id), client_id: String(task.client_id), responsible_id: String(task.responsible_id), due_date: task.due_date, priority: task.priority, instructions: task.instructions ?? '' });
+export default function Edit({ task, services, customers, employees }: Props) {
+    const [data, setData] = useState({ service_id: String(task.service_id), customer_id: String(task.customer_id), responsible_id: String(task.responsible_id), due_date: task.due_date, priority: task.priority, instructions: task.instructions ?? '' });
     const [collaboratorIds, setCollaboratorIds] = useState<number[]>(task.collaborator_ids);
     const [newAttachments, setNewAttachments] = useState<File[]>([]);
     const [removeAttachmentIds, setRemoveAttachmentIds] = useState<number[]>([]);
@@ -78,12 +78,12 @@ export default function Edit({ task, services, clients, employees }: Props) {
                                         <InputError message={errors.service_id} className="mt-1" />
                                     </div>
                                     <div>
-                                        <InputLabel htmlFor="client_id" value="Client *" />
-                                        <SelectInput id="client_id" value={data.client_id} className="mt-1 block w-full" onChange={(e) => setField('client_id', e.target.value)}>
-                                            <option value="">Select Client</option>
-                                            {clients.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                                        <InputLabel htmlFor="customer_id" value="Customer *" />
+                                        <SelectInput id="customer_id" value={data.customer_id} className="mt-1 block w-full" onChange={(e) => setField('customer_id', e.target.value)}>
+                                            <option value="">Select Customer</option>
+                                            {customers.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
                                         </SelectInput>
-                                        <InputError message={errors.client_id} className="mt-1" />
+                                        <InputError message={errors.customer_id} className="mt-1" />
                                     </div>
                                     <div>
                                         <InputLabel htmlFor="responsible_id" value="Responsible Person *" />

@@ -148,7 +148,7 @@ class TaskQueryController extends Controller
         $hasAccess = $task->created_by === $user->id
             || $task->responsible_id === $user->id
             || $task->collaborators()->where('users.id', $user->id)->exists()
-            || ($task->client && $task->client->user_id === $user->id);
+            || ($task->customer && $task->customer->user_id === $user->id);
 
         abort_unless($hasAccess, 403);
     }

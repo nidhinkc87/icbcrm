@@ -31,7 +31,7 @@ interface ActivityItem {
 interface OverdueTask {
     id: number;
     service_name: string;
-    client_name: string;
+    customer_name: string;
     responsible_name: string;
     due_date: string;
     days_overdue: number;
@@ -40,7 +40,7 @@ interface OverdueTask {
 interface UpcomingTask {
     id: number;
     service_name: string;
-    client_name: string;
+    customer_name: string;
     due_date: string;
     priority: string;
     status: string;
@@ -57,7 +57,7 @@ interface ServiceProgress {
 interface CollaboratorTask {
     id: number;
     service_name: string;
-    client_name: string;
+    customer_name: string;
     responsible_name: string;
     status: string;
     due_date: string;
@@ -83,7 +83,7 @@ interface PendingQuery {
 }
 
 interface Props extends PageProps {
-    role: 'admin' | 'employee' | 'client';
+    role: 'admin' | 'employee' | 'customer';
     kpis: Record<string, number>;
     charts: {
         status_distribution: ChartDataPoint[];
@@ -252,7 +252,7 @@ function AdminDashboard({ kpis, charts, recent_activity, overdue_tasks, pending_
                 <KpiCard label="Pending" value={kpis.pending_tasks} color="bg-amber-50"
                     icon={<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="h-6 w-6 text-amber-600"><path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>}
                 />
-                <KpiCard label="Total Clients" value={kpis.total_clients} color="bg-purple-50"
+                <KpiCard label="Total Customers" value={kpis.total_customers} color="bg-purple-50"
                     icon={<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="h-6 w-6 text-purple-600"><path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" /></svg>}
                 />
                 <KpiCard label="Employees" value={kpis.total_employees} color="bg-cyan-50"
@@ -407,7 +407,7 @@ function AdminDashboard({ kpis, charts, recent_activity, overdue_tasks, pending_
                                         </span>
                                     </div>
                                     <p className="mt-0.5 text-xs text-gray-500">
-                                        {task.client_name} · {task.responsible_name} · Due {task.due_date}
+                                        {task.customer_name} · {task.responsible_name} · Due {task.due_date}
                                     </p>
                                 </Link>
                             ))}
@@ -547,7 +547,7 @@ function EmployeeDashboard({ kpis, charts, upcoming_tasks, overdue_tasks, collab
                                         <p className="text-sm font-medium text-gray-900">{task.service_name}</p>
                                         <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium capitalize ${priorityBadgeColors[task.priority] || ''}`}>{task.priority}</span>
                                     </div>
-                                    <p className="mt-0.5 text-xs text-gray-500">{task.client_name} · Due {task.due_date}</p>
+                                    <p className="mt-0.5 text-xs text-gray-500">{task.customer_name} · Due {task.due_date}</p>
                                 </Link>
                             ))}
                         </div>
@@ -569,7 +569,7 @@ function EmployeeDashboard({ kpis, charts, upcoming_tasks, overdue_tasks, collab
                                         <p className="text-sm font-medium text-gray-900">{task.service_name}</p>
                                         <span className="inline-flex rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700">{task.days_overdue}d overdue</span>
                                     </div>
-                                    <p className="mt-0.5 text-xs text-gray-500">{task.client_name} · Due {task.due_date}</p>
+                                    <p className="mt-0.5 text-xs text-gray-500">{task.customer_name} · Due {task.due_date}</p>
                                 </Link>
                             ))}
                         </div>
@@ -601,7 +601,7 @@ function EmployeeDashboard({ kpis, charts, upcoming_tasks, overdue_tasks, collab
                                     </span>
                                 </div>
                                 <p className="mt-0.5 text-xs text-gray-500">
-                                    {task.client_name} · Responsible: {task.responsible_name} · Due {task.due_date}
+                                    {task.customer_name} · Responsible: {task.responsible_name} · Due {task.due_date}
                                 </p>
                             </Link>
                         ))}
@@ -647,7 +647,7 @@ function EmployeeDashboard({ kpis, charts, upcoming_tasks, overdue_tasks, collab
     );
 }
 
-function ClientDashboard({ kpis, charts, service_progress, recent_activity, pending_queries }: Props) {
+function CustomerDashboard({ kpis, charts, service_progress, recent_activity, pending_queries }: Props) {
     return (
         <>
             {/* KPI Cards */}
@@ -756,7 +756,7 @@ export default function Dashboard(props: Props) {
                 <div className="mx-auto max-w-7xl space-y-6 sm:px-6 lg:px-8">
                     {props.role === 'admin' && <AdminDashboard {...props} />}
                     {props.role === 'employee' && <EmployeeDashboard {...props} />}
-                    {props.role === 'client' && <ClientDashboard {...props} />}
+                    {props.role === 'customer' && <CustomerDashboard {...props} />}
                 </div>
             </div>
         </AuthenticatedLayout>

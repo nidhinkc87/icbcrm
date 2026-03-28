@@ -14,7 +14,7 @@ class TaskDeleted extends Notification implements ShouldQueue
     public function __construct(
         protected int $taskId,
         protected string $serviceName,
-        protected string $clientName,
+        protected string $customerName,
         protected string $deletedBy,
     ) {}
 
@@ -35,7 +35,7 @@ class TaskDeleted extends Notification implements ShouldQueue
             ->line("**Deleted Task Details:**")
             ->line("- **Task ID:** #{$this->taskId}")
             ->line("- **Service:** {$this->serviceName}")
-            ->line("- **Client:** {$this->clientName}")
+            ->line("- **Customer:** {$this->customerName}")
             ->line('')
             ->line("This task and its associated data are no longer available. If you believe this was done in error, please contact your administrator.")
             ->action('Go to Tasks', route('tasks.index'))

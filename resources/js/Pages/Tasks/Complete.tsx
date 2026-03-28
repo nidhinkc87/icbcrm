@@ -11,7 +11,7 @@ import { useState } from 'react';
 interface TaskSummary {
     id: number;
     service_name: string;
-    client_name: string;
+    customer_name: string;
     instructions: string | null;
     status: string;
     due_date_display: string;
@@ -253,7 +253,7 @@ export default function Complete({ task, form_schema, draft_data, completion_sch
                                         </div>
                                     </div>
                                     <div className="mt-3 space-y-1">
-                                        <p className="text-xs text-gray-500">Client: <span className="font-medium text-gray-700">{task.client_name}</span></p>
+                                        <p className="text-xs text-gray-500">Client: <span className="font-medium text-gray-700">{task.customer_name}</span></p>
                                         <div className="flex items-center gap-2">
                                             <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium capitalize ${priorityColors[task.priority] || ''}`}>{task.priority}</span>
                                             <span className="text-xs text-gray-400">Due {task.due_date_display}</span>

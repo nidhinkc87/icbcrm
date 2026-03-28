@@ -35,7 +35,7 @@ interface Props extends PageProps {
     recent_tasks: {
         id: number;
         service_name: string;
-        client_name: string;
+        customer_name: string;
         priority: string;
         due_date: string;
         completed_at: string;
@@ -493,7 +493,7 @@ export default function Show({
                                                     </Link>
                                                 </td>
                                                 <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-700">
-                                                    {task.client_name}
+                                                    {task.customer_name}
                                                 </td>
                                                 <td className="whitespace-nowrap px-4 py-3">
                                                     <span
