@@ -22,11 +22,11 @@ export default function SidebarLink({
         : 'group flex items-center rounded-md px-3 py-2 text-sm font-medium transition duration-150 ease-in-out border-l-4 ';
 
     const activeClasses = isSub
-        ? 'bg-emerald-800/60 text-emerald-200'
+        ? 'text-emerald-200'
         : 'border-emerald-400 bg-emerald-900 text-white';
 
     const inactiveClasses = isSub
-        ? 'text-emerald-300/70 hover:bg-emerald-800/40 hover:text-emerald-200'
+        ? 'text-emerald-300/70 hover:text-emerald-200'
         : 'border-transparent text-emerald-100 hover:bg-emerald-900 hover:text-white';
 
     const iconActiveClasses = isSub ? 'text-emerald-300' : 'text-emerald-300';
