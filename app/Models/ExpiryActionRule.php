@@ -13,7 +13,7 @@ class ExpiryActionRule extends Model
         'document_type_id',
         'trigger_days_before',
         'action',
-        'service_id',
+        'service_ids',
         'assignment_strategy',
         'assigned_employee_id',
         'notify_customer',
@@ -25,6 +25,7 @@ class ExpiryActionRule extends Model
     protected function casts(): array
     {
         return [
+            'service_ids' => 'array',
             'notify_customer' => 'boolean',
             'notify_admin' => 'boolean',
             'is_active' => 'boolean',
@@ -36,9 +37,9 @@ class ExpiryActionRule extends Model
         return $this->belongsTo(DocumentType::class);
     }
 
-    public function service(): BelongsTo
+    public function services()
     {
-        return $this->belongsTo(Service::class);
+        return Service::whereIn('id', $this->service_ids ?? [])->get();
     }
 
     public function assignedEmployee(): BelongsTo

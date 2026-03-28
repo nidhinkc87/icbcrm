@@ -58,10 +58,12 @@ class CheckDocumentExpiry extends Command
                     continue;
                 }
 
-                $task = null;
+                $tasks = collect();
 
-                if ($rule->action === 'auto_create_task' && $rule->service_id) {
-                    $task = $this->createTask($rule, $customer, $doc);
+                if ($rule->action === 'auto_create_task' && ! empty($rule->service_ids)) {
+                    foreach ($rule->service_ids as $serviceId) {
+                        $tasks->push($this->createTask($rule, $customer, $doc, $serviceId));
+                    }
                 }
 
                 // Log the action
@@ -70,12 +72,12 @@ class CheckDocumentExpiry extends Command
                     'customer_id' => $customer->id,
                     'customer_document_id' => $doc->id,
                     'expiry_date' => $doc->expiry_date,
-                    'action_taken' => $task ? 'task_created' : 'notified',
-                    'task_id' => $task?->id,
+                    'action_taken' => $tasks->isNotEmpty() ? 'task_created' : 'notified',
+                    'task_id' => $tasks->first()?->id,
                 ]);
 
                 // Send notifications
-                $this->sendNotifications($rule, $customer, $doc, $task);
+                $this->sendNotifications($rule, $customer, $doc, $tasks->first());
 
                 $actionsCount++;
             }
@@ -86,10 +88,10 @@ class CheckDocumentExpiry extends Command
         return Command::SUCCESS;
     }
 
-    private function createTask(ExpiryActionRule $rule, $customer, CustomerDocument $doc): Task
+    private function createTask(ExpiryActionRule $rule, $customer, CustomerDocument $doc, int $serviceId): Task
     {
         // Determine assignee
-        $assigneeId = $this->resolveAssignee($rule, $customer);
+        $assigneeId = $this->resolveAssignee($rule, $customer, $serviceId);
 
         $context = $doc->partner ? " (Partner: {$doc->partner->name})" : '';
         $context .= $doc->branch ? " (Branch: {$doc->branch->name})" : '';
@@ -99,7 +101,7 @@ class CheckDocumentExpiry extends Command
 
         $task = Task::create([
             'created_by' => $assigneeId,
-            'service_id' => $rule->service_id,
+            'service_id' => $serviceId,
             'customer_id' => $customer->id,
             'responsible_id' => $assigneeId,
             'priority' => $rule->priority,
@@ -118,7 +120,7 @@ class CheckDocumentExpiry extends Command
         return $task;
     }
 
-    private function resolveAssignee(ExpiryActionRule $rule, $customer): int
+    private function resolveAssignee(ExpiryActionRule $rule, $customer, int $serviceId): int
     {
         if ($rule->assignment_strategy === 'specific_employee' && $rule->assigned_employee_id) {
             return $rule->assigned_employee_id;
@@ -127,7 +129,7 @@ class CheckDocumentExpiry extends Command
         if ($rule->assignment_strategy === 'last_employee') {
             // Find the last completed task for this customer + service
             $lastTask = Task::where('customer_id', $customer->id)
-                ->where('service_id', $rule->service_id)
+                ->where('service_id', $serviceId)
                 ->where('status', 'completed')
                 ->latest('updated_at')
                 ->first();

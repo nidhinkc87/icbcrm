@@ -20,7 +20,8 @@ interface RuleRow {
     priority: string;
     is_active: boolean;
     document_type?: { id: number; name: string };
-    service?: { id: number; name: string } | null;
+    service_ids: number[] | null;
+    service_names: string[];
     assigned_employee?: { id: number; name: string } | null;
 }
 
@@ -145,7 +146,7 @@ export default function Index({ rules }: Props) {
                                                 {actionLabel(rule.action)}
                                             </td>
                                             <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900">
-                                                {rule.service?.name || '-'}
+                                                {rule.service_names?.length > 0 ? rule.service_names.join(', ') : '-'}
                                             </td>
                                             <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900">
                                                 {strategyLabel(rule.assignment_strategy)}

@@ -14,7 +14,7 @@ interface RuleData {
     document_type_id: number;
     trigger_days_before: number;
     action: string;
-    service_id: number | null;
+    service_ids: number[] | null;
     assignment_strategy: string;
     assigned_employee_id: number | null;
     notify_customer: boolean;
@@ -36,7 +36,7 @@ export default function Edit({ rule, document_types, services, employees }: Prop
         document_type_id: String(rule.document_type_id),
         trigger_days_before: String(rule.trigger_days_before),
         action: rule.action,
-        service_id: rule.service_id ? String(rule.service_id) : '',
+        service_ids: rule.service_ids ?? [] as number[],
         assignment_strategy: rule.assignment_strategy,
         assigned_employee_id: rule.assigned_employee_id ? String(rule.assigned_employee_id) : '',
         notify_customer: rule.notify_customer,
@@ -102,12 +102,29 @@ export default function Edit({ rule, document_types, services, employees }: Prop
 
                             {data.action === 'auto_create_task' && (
                                 <div className="mt-4">
-                                    <InputLabel htmlFor="service_id" value="Service for Task *" />
-                                    <select id="service_id" value={data.service_id} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-emerald-500 focus:ring-emerald-500" onChange={(e) => setData('service_id', e.target.value)} required>
-                                        <option value="">Select Service</option>
-                                        {services.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-                                    </select>
-                                    <InputError message={errors.service_id} className="mt-2" />
+                                    <InputLabel value="Services to Create Tasks For *" />
+                                    <p className="mt-1 text-xs text-gray-500">Select one or more services. A separate task will be created for each.</p>
+                                    <div className="mt-2 max-h-48 space-y-1.5 overflow-y-auto rounded-md border border-gray-300 p-3">
+                                        {services.map((s) => (
+                                            <label key={s.id} className="flex items-center gap-2">
+                                                <input
+                                                    type="checkbox"
+                                                    className="rounded border-gray-300 text-emerald-600 focus:ring-emerald-500"
+                                                    checked={(data.service_ids ?? []).includes(s.id)}
+                                                    onChange={(e) => {
+                                                        const current = data.service_ids ?? [];
+                                                        if (e.target.checked) {
+                                                            setData('service_ids', [...current, s.id]);
+                                                        } else {
+                                                            setData('service_ids', current.filter((id: number) => id !== s.id));
+                                                        }
+                                                    }}
+                                                />
+                                                <span className="text-sm text-gray-700">{s.name}</span>
+                                            </label>
+                                        ))}
+                                    </div>
+                                    <InputError message={errors.service_ids} className="mt-2" />
                                 </div>
                             )}
 

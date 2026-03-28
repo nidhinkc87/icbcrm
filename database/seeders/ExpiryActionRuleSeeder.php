@@ -85,7 +85,7 @@ class ExpiryActionRuleSeeder extends Seeder
                 [
                     'name' => $rule['name'],
                     'action' => $rule['action'],
-                    'service_id' => $rule['service_name'] ? ($services[$rule['service_name']] ?? null) : null,
+                    'service_ids' => $rule['service_name'] ? [($services[$rule['service_name']] ?? null)] : null,
                     'assignment_strategy' => 'last_employee',
                     'notify_customer' => true,
                     'notify_admin' => true,

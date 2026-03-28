@@ -14,9 +14,18 @@ class ExpiryRuleController extends Controller
 {
     public function index()
     {
-        $rules = ExpiryActionRule::with(['documentType', 'service', 'assignedEmployee'])
+        $services = Service::pluck('name', 'id');
+
+        $rules = ExpiryActionRule::with(['documentType:id,name', 'assignedEmployee:id,name'])
             ->latest()
-            ->paginate(15);
+            ->paginate(15)
+            ->through(function ($rule) use ($services) {
+                $rule->service_names = collect($rule->service_ids ?? [])
+                    ->map(fn ($id) => $services[$id] ?? null)
+                    ->filter()
+                    ->values();
+                return $rule;
+            });
 
         return Inertia::render('Admin/ExpiryRules/Index', [
             'rules' => $rules,
@@ -39,7 +48,8 @@ class ExpiryRuleController extends Controller
             'document_type_id' => 'required|exists:document_types,id',
             'trigger_days_before' => 'required|integer|min:0|max:365',
             'action' => 'required|in:notify_only,auto_create_task',
-            'service_id' => 'nullable|required_if:action,auto_create_task|exists:services,id',
+            'service_ids' => 'nullable|array',
+            'service_ids.*' => 'exists:services,id',
             'assignment_strategy' => 'required|in:last_employee,admin,specific_employee',
             'assigned_employee_id' => 'nullable|required_if:assignment_strategy,specific_employee|exists:users,id',
             'notify_customer' => 'boolean',
@@ -48,6 +58,10 @@ class ExpiryRuleController extends Controller
             'is_active' => 'boolean',
         ]);
 
+        if ($validated['action'] === 'notify_only') {
+            $validated['service_ids'] = null;
+        }
+
         ExpiryActionRule::create($validated);
 
         return redirect()->route('admin.expiry-rules.index')->with('success', 'Expiry rule created successfully.');
@@ -55,10 +69,8 @@ class ExpiryRuleController extends Controller
 
     public function edit(ExpiryActionRule $expiry_rule)
     {
-        $expiry_rule->load(['documentType', 'service', 'assignedEmployee']);
-
         return Inertia::render('Admin/ExpiryRules/Edit', [
-            'rule' => $expiry_rule,
+            'rule' => $expiry_rule->load(['documentType:id,name', 'assignedEmployee:id,name']),
             'document_types' => DocumentType::where('is_active', true)->get(['id', 'name']),
             'services' => Service::where('is_active', true)->get(['id', 'name']),
             'employees' => User::select('id', 'name')->get(),
@@ -72,7 +84,8 @@ class ExpiryRuleController extends Controller
             'document_type_id' => 'required|exists:document_types,id',
             'trigger_days_before' => 'required|integer|min:0|max:365',
             'action' => 'required|in:notify_only,auto_create_task',
-            'service_id' => 'nullable|required_if:action,auto_create_task|exists:services,id',
+            'service_ids' => 'nullable|array',
+            'service_ids.*' => 'exists:services,id',
             'assignment_strategy' => 'required|in:last_employee,admin,specific_employee',
             'assigned_employee_id' => 'nullable|required_if:assignment_strategy,specific_employee|exists:users,id',
             'notify_customer' => 'boolean',
@@ -80,6 +93,10 @@ class ExpiryRuleController extends Controller
             'priority' => 'required|in:low,medium,high,urgent',
             'is_active' => 'boolean',
         ]);
+
+        if ($validated['action'] === 'notify_only') {
+            $validated['service_ids'] = null;
+        }
 
         $expiry_rule->update($validated);
 

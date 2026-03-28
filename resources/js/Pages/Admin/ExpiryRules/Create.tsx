@@ -20,7 +20,7 @@ export default function Create({ document_types, services, employees }: Props) {
         document_type_id: '',
         trigger_days_before: '30',
         action: 'notify_only',
-        service_id: '',
+        service_ids: [] as number[],
         assignment_strategy: 'last_employee',
         assigned_employee_id: '',
         notify_customer: true,
@@ -86,12 +86,28 @@ export default function Create({ document_types, services, employees }: Props) {
 
                             {data.action === 'auto_create_task' && (
                                 <div className="mt-4">
-                                    <InputLabel htmlFor="service_id" value="Service for Task *" />
-                                    <select id="service_id" value={data.service_id} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-emerald-500 focus:ring-emerald-500" onChange={(e) => setData('service_id', e.target.value)} required>
-                                        <option value="">Select Service</option>
-                                        {services.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-                                    </select>
-                                    <InputError message={errors.service_id} className="mt-2" />
+                                    <InputLabel value="Services to Create Tasks For *" />
+                                    <p className="mt-1 text-xs text-gray-500">Select one or more services. A separate task will be created for each.</p>
+                                    <div className="mt-2 max-h-48 space-y-1.5 overflow-y-auto rounded-md border border-gray-300 p-3">
+                                        {services.map((s) => (
+                                            <label key={s.id} className="flex items-center gap-2">
+                                                <input
+                                                    type="checkbox"
+                                                    className="rounded border-gray-300 text-emerald-600 focus:ring-emerald-500"
+                                                    checked={data.service_ids.includes(s.id)}
+                                                    onChange={(e) => {
+                                                        if (e.target.checked) {
+                                                            setData('service_ids', [...data.service_ids, s.id]);
+                                                        } else {
+                                                            setData('service_ids', data.service_ids.filter((id: number) => id !== s.id));
+                                                        }
+                                                    }}
+                                                />
+                                                <span className="text-sm text-gray-700">{s.name}</span>
+                                            </label>
+                                        ))}
+                                    </div>
+                                    <InputError message={errors.service_ids} className="mt-2" />
                                 </div>
                             )}
 
