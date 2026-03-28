@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\CustomerDocument;
+use App\Models\DocumentType;
 use App\Models\User;
 use App\Notifications\UserInvitation;
 use Spatie\Permission\Models\Role;
@@ -136,29 +137,53 @@ class UserController extends Controller
         }
 
         if ($type === 'customer') {
-            $rules['phone'] = 'nullable|string|max:20';
-            $rules['address_line'] = 'nullable|string|max:255';
-            $rules['city'] = 'nullable|string|max:255';
-            $rules['emirate'] = 'nullable|string|max:255';
-            $rules['country'] = 'nullable|string|max:255';
+            // Company details
+            $rules['legal_type'] = 'required|string|max:255';
+            $rules['trade_license_no'] = 'required|string|max:255';
+            $rules['issuing_authority'] = 'required|string|max:255';
+            $rules['trade_license_file'] = 'required|file|mimes:pdf,jpg,jpeg,png|max:10240';
+            $rules['moa_file'] = 'required|file|mimes:pdf,jpg,jpeg,png|max:10240';
+            $rules['trade_license_issue_date'] = 'required|date';
+            $rules['trade_license_expiry_date'] = 'required|date|after:trade_license_issue_date';
+
+            // Partners (repeatable)
+            $rules['partners'] = 'required|array|min:1';
+            $rules['partners.*.name'] = 'required|string|max:255';
+            $rules['partners.*.emirates_id_no'] = 'required|string|max:255';
+            $rules['partners.*.emirates_id_file'] = 'required|file|mimes:pdf,jpg,jpeg,png|max:10240';
+            $rules['partners.*.passport_no'] = 'required|string|max:255';
+            $rules['partners.*.passport_file'] = 'required|file|mimes:pdf,jpg,jpeg,png|max:10240';
+            $rules['partners.*.emirates_id_expiry'] = 'required|date';
+            $rules['partners.*.passport_expiry'] = 'required|date';
+
+            // Bank details
+            $rules['bank_name'] = 'required|string|max:255';
+            $rules['bank_branch'] = 'nullable|string|max:255';
+            $rules['account_number'] = 'nullable|string|max:255';
+            $rules['iban'] = 'required|string|max:255';
+
+            // Address
+            $rules['address_line'] = 'required|string|max:255';
+            $rules['emirate'] = 'required|string|max:255';
+            $rules['city'] = 'required|string|max:255';
             $rules['po_box'] = 'nullable|string|max:50';
-            $rules['emirates_id'] = 'required|file|mimes:pdf,jpg,jpeg,png|max:5120';
-            $rules['passport'] = 'required|file|mimes:pdf,jpg,jpeg,png|max:5120';
-            $rules['trade_license'] = 'required|file|mimes:pdf,jpg,jpeg,png|max:5120';
-            $rules['moa'] = 'required|file|mimes:pdf,jpg,jpeg,png|max:5120';
-            $rules['additional_documents'] = 'nullable|array';
-            $rules['additional_documents.*.label'] = 'required|string|max:255';
-            $rules['additional_documents.*.file'] = 'required|file|mimes:pdf,jpg,jpeg,png|max:5120';
+
+            // Contact
+            $rules['contact_person_name'] = 'required|string|max:255';
+            $rules['phone'] = 'required|string|max:20';
+            $rules['telephone'] = 'nullable|string|max:20';
+
+            // Branches (optional, repeatable)
+            $rules['branches'] = 'nullable|array';
+            $rules['branches.*.name'] = 'required|string|max:255';
+            $rules['branches.*.trade_license_no'] = 'required|string|max:255';
+            $rules['branches.*.issuing_authority'] = 'required|string|max:255';
+            $rules['branches.*.moa_file'] = 'nullable|file|mimes:pdf,jpg,jpeg,png|max:10240';
+            $rules['branches.*.issue_date'] = 'required|date';
+            $rules['branches.*.expiry_date'] = 'required|date|after:branches.*.issue_date';
         }
 
-        $validated = $request->validate($rules, [
-            'emirates_id.required' => 'Emirates ID document is required.',
-            'passport.required' => 'Passport document is required.',
-            'trade_license.required' => 'Trade License document is required.',
-            'moa.required' => 'MOA document is required.',
-            'additional_documents.*.label.required' => 'Document label is required.',
-            'additional_documents.*.file.required' => 'Document file is required.',
-        ]);
+        $validated = $request->validate($rules);
 
         $user = User::create([
             'name' => $validated['name'],
@@ -184,8 +209,16 @@ class UserController extends Controller
                 'emergency_contact_name' => $validated['emergency_contact_name'] ?? null,
                 'emergency_contact_number' => $validated['emergency_contact_number'] ?? null,
                 'emergency_contact_relationship' => $validated['emergency_contact_relationship'] ?? null,
-                'local_address' => $validated['local_address'] ?? null,
-                'home_country_address' => $validated['home_country_address'] ?? null,
+                'local_address_line' => $validated['local_address_line'] ?? null,
+                'local_city' => $validated['local_city'] ?? null,
+                'local_emirate' => $validated['local_emirate'] ?? null,
+                'local_po_box' => $validated['local_po_box'] ?? null,
+                'home_address_line' => $validated['home_address_line'] ?? null,
+                'home_city' => $validated['home_city'] ?? null,
+                'home_state' => $validated['home_state'] ?? null,
+                'home_country' => $validated['home_country'] ?? null,
+                'home_postal_code' => $validated['home_postal_code'] ?? null,
+                'home_contact_number' => $validated['home_contact_number'] ?? null,
                 'submission_date' => $validated['submission_date'] ?? null,
             ]);
 
@@ -194,15 +227,20 @@ class UserController extends Controller
 
         if ($type === 'customer') {
             $customer = $user->customer()->create([
-                'phone' => $validated['phone'] ?? null,
-                'address_line' => $validated['address_line'] ?? null,
-                'city' => $validated['city'] ?? null,
-                'emirate' => $validated['emirate'] ?? null,
-                'country' => $validated['country'] ?? 'UAE',
+                'phone' => $validated['phone'],
+                'address_line' => $validated['address_line'],
+                'city' => $validated['city'],
+                'emirate' => $validated['emirate'],
+                'country' => 'UAE',
                 'po_box' => $validated['po_box'] ?? null,
+                'legal_type' => $validated['legal_type'],
+                'trade_license_no' => $validated['trade_license_no'],
+                'issuing_authority' => $validated['issuing_authority'],
+                'contact_person_name' => $validated['contact_person_name'],
+                'telephone' => $validated['telephone'] ?? null,
             ]);
 
-            $this->storeCustomerDocuments($customer, $request, $validated);
+            $this->storeCustomerOnboarding($customer, $request, $validated);
         }
 
         $token = Password::broker()->createToken($user);
@@ -431,21 +469,56 @@ class UserController extends Controller
         }
 
         if ($role === 'customer') {
-            $rules['phone'] = 'nullable|string|max:20';
-            $rules['address_line'] = 'nullable|string|max:255';
-            $rules['city'] = 'nullable|string|max:255';
-            $rules['emirate'] = 'nullable|string|max:255';
-            $rules['country'] = 'nullable|string|max:255';
+            // Company details
+            $rules['legal_type'] = 'required|string|max:255';
+            $rules['trade_license_no'] = 'required|string|max:255';
+            $rules['issuing_authority'] = 'required|string|max:255';
+            $rules['trade_license_file'] = 'nullable|file|mimes:pdf,jpg,jpeg,png|max:10240';
+            $rules['moa_file'] = 'nullable|file|mimes:pdf,jpg,jpeg,png|max:10240';
+            $rules['trade_license_issue_date'] = 'required|date';
+            $rules['trade_license_expiry_date'] = 'required|date|after:trade_license_issue_date';
+
+            // Partners
+            $rules['partners'] = 'required|array|min:1';
+            $rules['partners.*.id'] = 'nullable|integer';
+            $rules['partners.*.name'] = 'required|string|max:255';
+            $rules['partners.*.emirates_id_no'] = 'required|string|max:255';
+            $rules['partners.*.emirates_id_file'] = 'nullable|file|mimes:pdf,jpg,jpeg,png|max:10240';
+            $rules['partners.*.passport_no'] = 'required|string|max:255';
+            $rules['partners.*.passport_file'] = 'nullable|file|mimes:pdf,jpg,jpeg,png|max:10240';
+            $rules['partners.*.emirates_id_expiry'] = 'required|date';
+            $rules['partners.*.passport_expiry'] = 'required|date';
+
+            // Bank
+            $rules['bank_name'] = 'required|string|max:255';
+            $rules['bank_branch'] = 'nullable|string|max:255';
+            $rules['account_number'] = 'nullable|string|max:255';
+            $rules['iban'] = 'required|string|max:255';
+
+            // Address
+            $rules['address_line'] = 'required|string|max:255';
+            $rules['emirate'] = 'required|string|max:255';
+            $rules['city'] = 'required|string|max:255';
             $rules['po_box'] = 'nullable|string|max:50';
-            $rules['emirates_id'] = 'nullable|file|mimes:pdf,jpg,jpeg,png|max:5120';
-            $rules['passport'] = 'nullable|file|mimes:pdf,jpg,jpeg,png|max:5120';
-            $rules['trade_license'] = 'nullable|file|mimes:pdf,jpg,jpeg,png|max:5120';
-            $rules['moa'] = 'nullable|file|mimes:pdf,jpg,jpeg,png|max:5120';
-            $rules['additional_documents'] = 'nullable|array';
-            $rules['additional_documents.*.label'] = 'required|string|max:255';
-            $rules['additional_documents.*.file'] = 'required|file|mimes:pdf,jpg,jpeg,png|max:5120';
-            $rules['remove_documents'] = 'nullable|array';
-            $rules['remove_documents.*'] = 'integer|exists:customer_documents,id';
+
+            // Contact
+            $rules['contact_person_name'] = 'required|string|max:255';
+            $rules['phone'] = 'required|string|max:20';
+            $rules['telephone'] = 'nullable|string|max:20';
+
+            // Branches
+            $rules['branches'] = 'nullable|array';
+            $rules['branches.*.id'] = 'nullable|integer';
+            $rules['branches.*.name'] = 'required|string|max:255';
+            $rules['branches.*.trade_license_no'] = 'required|string|max:255';
+            $rules['branches.*.issuing_authority'] = 'required|string|max:255';
+            $rules['branches.*.moa_file'] = 'nullable|file|mimes:pdf,jpg,jpeg,png|max:10240';
+            $rules['branches.*.issue_date'] = 'required|date';
+            $rules['branches.*.expiry_date'] = 'required|date|after:branches.*.issue_date';
+
+            // Removals
+            $rules['remove_partner_ids'] = 'nullable|array';
+            $rules['remove_branch_ids'] = 'nullable|array';
         }
 
         $validated = $request->validate($rules);
@@ -499,59 +572,21 @@ class UserController extends Controller
             $customer = $user->customer()->updateOrCreate(
                 ['user_id' => $user->id],
                 [
-                    'phone' => $validated['phone'] ?? null,
-                    'address_line' => $validated['address_line'] ?? null,
-                    'city' => $validated['city'] ?? null,
-                    'emirate' => $validated['emirate'] ?? null,
-                    'country' => $validated['country'] ?? 'UAE',
+                    'phone' => $validated['phone'],
+                    'address_line' => $validated['address_line'],
+                    'city' => $validated['city'],
+                    'emirate' => $validated['emirate'],
+                    'country' => 'UAE',
                     'po_box' => $validated['po_box'] ?? null,
+                    'legal_type' => $validated['legal_type'],
+                    'trade_license_no' => $validated['trade_license_no'],
+                    'issuing_authority' => $validated['issuing_authority'],
+                    'contact_person_name' => $validated['contact_person_name'],
+                    'telephone' => $validated['telephone'] ?? null,
                 ]
             );
 
-            // Remove documents marked for deletion
-            if (! empty($validated['remove_documents'])) {
-                $docsToRemove = $customer->documents()->whereIn('id', $validated['remove_documents'])->get();
-                foreach ($docsToRemove as $doc) {
-                    Storage::disk('public')->delete($doc->file_path);
-                    $doc->delete();
-                }
-            }
-
-            // Replace KYC documents if new files uploaded
-            foreach (['emirates_id', 'passport', 'trade_license', 'moa'] as $docType) {
-                if ($request->hasFile($docType)) {
-                    $existing = $customer->documents()->where('type', $docType)->first();
-                    if ($existing) {
-                        Storage::disk('public')->delete($existing->file_path);
-                        $existing->delete();
-                    }
-
-                    $file = $request->file($docType);
-                    $path = $file->store("customer-documents/{$customer->id}", 'public');
-
-                    $customer->documents()->create([
-                        'type' => $docType,
-                        'file_path' => $path,
-                        'original_name' => $file->getClientOriginalName(),
-                    ]);
-                }
-            }
-
-            // Add new additional documents
-            if (! empty($validated['additional_documents'])) {
-                foreach ($validated['additional_documents'] as $index => $additionalDoc) {
-                    $file = $request->file("additional_documents.{$index}.file");
-                    if ($file) {
-                        $path = $file->store("customer-documents/{$customer->id}", 'public');
-                        $customer->documents()->create([
-                            'type' => 'additional',
-                            'label' => $additionalDoc['label'],
-                            'file_path' => $path,
-                            'original_name' => $file->getClientOriginalName(),
-                        ]);
-                    }
-                }
-            }
+            $this->updateCustomerOnboarding($customer, $request, $validated);
         }
 
         return redirect()->route('admin.users.index')
@@ -612,31 +647,278 @@ class UserController extends Controller
         $employee->save();
     }
 
-    private function storeCustomerDocuments($customer, Request $request, array $validated): void
+    private function updateCustomerOnboarding($customer, Request $request, array $validated): void
     {
-        foreach (['emirates_id', 'passport', 'trade_license', 'moa'] as $docType) {
-            if ($request->hasFile($docType)) {
-                $file = $request->file($docType);
-                $path = $file->store("customer-documents/{$customer->id}", 'public');
+        $storagePath = "customer-documents/{$customer->id}";
+        $docTypes = DocumentType::pluck('id', 'slug');
 
+        // Update company documents (Trade License)
+        $this->upsertCompanyDocument($customer, $docTypes['trade_license'], $request, 'trade_license_file', [
+            'value' => $validated['trade_license_no'],
+            'issue_date' => $validated['trade_license_issue_date'],
+            'expiry_date' => $validated['trade_license_expiry_date'],
+        ], $storagePath);
+
+        // Update MOA
+        $this->upsertCompanyDocument($customer, $docTypes['moa'], $request, 'moa_file', [
+            'issue_date' => $validated['trade_license_issue_date'],
+            'expiry_date' => $validated['trade_license_expiry_date'],
+        ], $storagePath);
+
+        // Remove deleted partners
+        if (! empty($validated['remove_partner_ids'])) {
+            $customer->partners()->whereIn('id', $validated['remove_partner_ids'])->each(function ($partner) use ($customer) {
+                $customer->documents()->where('partner_id', $partner->id)->each(function ($doc) {
+                    if ($doc->file_path) {
+                        Storage::disk('public')->delete($doc->file_path);
+                    }
+                    $doc->delete();
+                });
+                $partner->delete();
+            });
+        }
+
+        // Upsert partners
+        foreach ($validated['partners'] as $index => $partnerData) {
+            $partner = ! empty($partnerData['id'])
+                ? $customer->partners()->find($partnerData['id'])
+                : null;
+
+            if ($partner) {
+                $partner->update(['name' => $partnerData['name']]);
+            } else {
+                $partner = $customer->partners()->create(['name' => $partnerData['name']]);
+            }
+
+            // Emirates ID
+            $this->upsertPartnerDocument($customer, $partner, $docTypes['partner_emirates_id'], $request, "partners.{$index}.emirates_id_file", [
+                'value' => $partnerData['emirates_id_no'],
+                'expiry_date' => $partnerData['emirates_id_expiry'],
+            ], $storagePath);
+
+            // Passport
+            $this->upsertPartnerDocument($customer, $partner, $docTypes['partner_passport'], $request, "partners.{$index}.passport_file", [
+                'value' => $partnerData['passport_no'],
+                'expiry_date' => $partnerData['passport_expiry'],
+            ], $storagePath);
+        }
+
+        // Update bank details
+        $customer->bankDetail()->updateOrCreate(
+            ['customer_id' => $customer->id],
+            [
+                'bank_name' => $validated['bank_name'],
+                'branch' => $validated['bank_branch'] ?? null,
+                'account_number' => $validated['account_number'] ?? null,
+                'iban' => $validated['iban'],
+            ]
+        );
+
+        // Remove deleted branches
+        if (! empty($validated['remove_branch_ids'])) {
+            $customer->branches()->whereIn('id', $validated['remove_branch_ids'])->each(function ($branch) use ($customer) {
+                $customer->documents()->where('branch_id', $branch->id)->each(function ($doc) {
+                    if ($doc->file_path) {
+                        Storage::disk('public')->delete($doc->file_path);
+                    }
+                    $doc->delete();
+                });
+                $branch->delete();
+            });
+        }
+
+        // Upsert branches
+        foreach ($validated['branches'] ?? [] as $index => $branchData) {
+            $branch = ! empty($branchData['id'])
+                ? $customer->branches()->find($branchData['id'])
+                : null;
+
+            if ($branch) {
+                $branch->update(['name' => $branchData['name']]);
+            } else {
+                $branch = $customer->branches()->create(['name' => $branchData['name']]);
+            }
+
+            // Branch Trade License
+            $existing = $customer->documents()->where('branch_id', $branch->id)->where('document_type_id', $docTypes['branch_trade_license'])->first();
+            if ($existing) {
+                $existing->update(['value' => $branchData['trade_license_no'], 'issue_date' => $branchData['issue_date'], 'expiry_date' => $branchData['expiry_date']]);
+            } else {
+                $customer->documents()->create(['document_type_id' => $docTypes['branch_trade_license'], 'branch_id' => $branch->id, 'value' => $branchData['trade_license_no'], 'issue_date' => $branchData['issue_date'], 'expiry_date' => $branchData['expiry_date']]);
+            }
+
+            // Branch Issuing Authority
+            $existing = $customer->documents()->where('branch_id', $branch->id)->where('document_type_id', $docTypes['branch_issuing_authority'])->first();
+            if ($existing) {
+                $existing->update(['value' => $branchData['issuing_authority']]);
+            } else {
+                $customer->documents()->create(['document_type_id' => $docTypes['branch_issuing_authority'], 'branch_id' => $branch->id, 'value' => $branchData['issuing_authority']]);
+            }
+
+            // Branch MOA file
+            if ($request->hasFile("branches.{$index}.moa_file")) {
+                $existingMoa = $customer->documents()->where('branch_id', $branch->id)->where('document_type_id', $docTypes['branch_moa'])->first();
+                if ($existingMoa?->file_path) {
+                    Storage::disk('public')->delete($existingMoa->file_path);
+                    $existingMoa->delete();
+                }
+                $file = $request->file("branches.{$index}.moa_file");
+                $customer->documents()->create(['document_type_id' => $docTypes['branch_moa'], 'branch_id' => $branch->id, 'file_path' => $file->store($storagePath, 'public'), 'original_name' => $file->getClientOriginalName(), 'issue_date' => $branchData['issue_date'], 'expiry_date' => $branchData['expiry_date']]);
+            }
+        }
+    }
+
+    private function upsertCompanyDocument($customer, int $docTypeId, Request $request, string $fileField, array $data, string $storagePath): void
+    {
+        $existing = $customer->documents()->where('document_type_id', $docTypeId)->whereNull('partner_id')->whereNull('branch_id')->first();
+
+        if ($existing) {
+            $existing->update($data);
+            if ($request->hasFile($fileField)) {
+                if ($existing->file_path) {
+                    Storage::disk('public')->delete($existing->file_path);
+                }
+                $file = $request->file($fileField);
+                $existing->update(['file_path' => $file->store($storagePath, 'public'), 'original_name' => $file->getClientOriginalName()]);
+            }
+        } elseif ($request->hasFile($fileField)) {
+            $file = $request->file($fileField);
+            $customer->documents()->create(array_merge($data, [
+                'document_type_id' => $docTypeId,
+                'file_path' => $file->store($storagePath, 'public'),
+                'original_name' => $file->getClientOriginalName(),
+            ]));
+        }
+    }
+
+    private function upsertPartnerDocument($customer, $partner, int $docTypeId, Request $request, string $fileField, array $data, string $storagePath): void
+    {
+        $existing = $customer->documents()->where('document_type_id', $docTypeId)->where('partner_id', $partner->id)->first();
+
+        if ($existing) {
+            $existing->update($data);
+            if ($request->hasFile($fileField)) {
+                if ($existing->file_path) {
+                    Storage::disk('public')->delete($existing->file_path);
+                }
+                $file = $request->file($fileField);
+                $existing->update(['file_path' => $file->store($storagePath, 'public'), 'original_name' => $file->getClientOriginalName()]);
+            }
+        } elseif ($request->hasFile($fileField)) {
+            $file = $request->file($fileField);
+            $customer->documents()->create(array_merge($data, [
+                'document_type_id' => $docTypeId,
+                'partner_id' => $partner->id,
+                'file_path' => $file->store($storagePath, 'public'),
+                'original_name' => $file->getClientOriginalName(),
+            ]));
+        }
+    }
+
+    private function storeCustomerOnboarding($customer, Request $request, array $validated): void
+    {
+        $storagePath = "customer-documents/{$customer->id}";
+        $docTypes = DocumentType::pluck('id', 'slug');
+
+        // Company-level documents: Trade License
+        if ($request->hasFile('trade_license_file')) {
+            $file = $request->file('trade_license_file');
+            $customer->documents()->create([
+                'document_type_id' => $docTypes['trade_license'],
+                'value' => $validated['trade_license_no'],
+                'file_path' => $file->store($storagePath, 'public'),
+                'original_name' => $file->getClientOriginalName(),
+                'issue_date' => $validated['trade_license_issue_date'],
+                'expiry_date' => $validated['trade_license_expiry_date'],
+            ]);
+        }
+
+        // Company-level documents: MOA
+        if ($request->hasFile('moa_file')) {
+            $file = $request->file('moa_file');
+            $customer->documents()->create([
+                'document_type_id' => $docTypes['moa'],
+                'file_path' => $file->store($storagePath, 'public'),
+                'original_name' => $file->getClientOriginalName(),
+                'issue_date' => $validated['trade_license_issue_date'],
+                'expiry_date' => $validated['trade_license_expiry_date'],
+            ]);
+        }
+
+        // Partners
+        foreach ($validated['partners'] as $index => $partnerData) {
+            $partner = $customer->partners()->create([
+                'name' => $partnerData['name'],
+            ]);
+
+            // Emirates ID
+            if ($request->hasFile("partners.{$index}.emirates_id_file")) {
+                $file = $request->file("partners.{$index}.emirates_id_file");
                 $customer->documents()->create([
-                    'type' => $docType,
-                    'file_path' => $path,
+                    'document_type_id' => $docTypes['partner_emirates_id'],
+                    'partner_id' => $partner->id,
+                    'value' => $partnerData['emirates_id_no'],
+                    'file_path' => $file->store($storagePath, 'public'),
                     'original_name' => $file->getClientOriginalName(),
+                    'expiry_date' => $partnerData['emirates_id_expiry'],
+                ]);
+            }
+
+            // Passport
+            if ($request->hasFile("partners.{$index}.passport_file")) {
+                $file = $request->file("partners.{$index}.passport_file");
+                $customer->documents()->create([
+                    'document_type_id' => $docTypes['partner_passport'],
+                    'partner_id' => $partner->id,
+                    'value' => $partnerData['passport_no'],
+                    'file_path' => $file->store($storagePath, 'public'),
+                    'original_name' => $file->getClientOriginalName(),
+                    'expiry_date' => $partnerData['passport_expiry'],
                 ]);
             }
         }
 
-        if (! empty($validated['additional_documents'])) {
-            foreach ($validated['additional_documents'] as $index => $additionalDoc) {
-                $file = $request->file("additional_documents.{$index}.file");
-                if ($file) {
-                    $path = $file->store("customer-documents/{$customer->id}", 'public');
+        // Bank details
+        $customer->bankDetail()->create([
+            'bank_name' => $validated['bank_name'],
+            'branch' => $validated['bank_branch'] ?? null,
+            'account_number' => $validated['account_number'] ?? null,
+            'iban' => $validated['iban'],
+        ]);
+
+        // Branches (optional)
+        if (! empty($validated['branches'])) {
+            foreach ($validated['branches'] as $index => $branchData) {
+                $branch = $customer->branches()->create([
+                    'name' => $branchData['name'],
+                ]);
+
+                // Branch Trade License (value stored as document)
+                $customer->documents()->create([
+                    'document_type_id' => $docTypes['branch_trade_license'],
+                    'branch_id' => $branch->id,
+                    'value' => $branchData['trade_license_no'],
+                    'issue_date' => $branchData['issue_date'],
+                    'expiry_date' => $branchData['expiry_date'],
+                ]);
+
+                // Branch Issuing Authority
+                $customer->documents()->create([
+                    'document_type_id' => $docTypes['branch_issuing_authority'],
+                    'branch_id' => $branch->id,
+                    'value' => $branchData['issuing_authority'],
+                ]);
+
+                // Branch MOA file (optional)
+                if ($request->hasFile("branches.{$index}.moa_file")) {
+                    $file = $request->file("branches.{$index}.moa_file");
                     $customer->documents()->create([
-                        'type' => 'additional',
-                        'label' => $additionalDoc['label'],
-                        'file_path' => $path,
+                        'document_type_id' => $docTypes['branch_moa'],
+                        'branch_id' => $branch->id,
+                        'file_path' => $file->store($storagePath, 'public'),
                         'original_name' => $file->getClientOriginalName(),
+                        'issue_date' => $branchData['issue_date'],
+                        'expiry_date' => $branchData['expiry_date'],
                     ]);
                 }
             }
