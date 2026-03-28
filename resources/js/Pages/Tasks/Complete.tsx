@@ -30,6 +30,24 @@ interface LinkedDocument {
     has_value: boolean;
 }
 
+interface CustomerDoc {
+    document_type_id: number;
+    document_type_name: string;
+    category: string;
+    has_file: boolean;
+    has_value: boolean;
+    has_expiry: boolean;
+    is_required: boolean;
+    found: boolean;
+    value: string | null;
+    file_url: string | null;
+    original_name: string | null;
+    issue_date: string | null;
+    expiry_date: string | null;
+    is_expired: boolean;
+    is_expiring_soon: boolean;
+}
+
 interface Props extends PageProps {
     task: TaskSummary;
     form_schema: FormField[];
@@ -37,6 +55,7 @@ interface Props extends PageProps {
     completion_schema: FormField[];
     draft_completion_data: Record<string, any>;
     linked_document?: LinkedDocument | null;
+    customer_documents?: CustomerDoc[];
 }
 
 const priorityColors: Record<string, string> = {
@@ -46,7 +65,7 @@ const priorityColors: Record<string, string> = {
     urgent: 'bg-red-100 text-red-700',
 };
 
-export default function Complete({ task, form_schema, draft_data, completion_schema, draft_completion_data, linked_document }: Props) {
+export default function Complete({ task, form_schema, draft_data, completion_schema, draft_completion_data, linked_document, customer_documents }: Props) {
     const { flash } = usePage<PageProps>().props;
     const [formData, setFormData] = useState<Record<string, any>>(() => {
         const initial: Record<string, any> = {};
@@ -381,6 +400,61 @@ export default function Complete({ task, form_schema, draft_data, completion_sch
 
                         {/* LEFT: Form */}
                         <div className="lg:col-span-8 lg:order-1 space-y-6">
+                            {/* Customer Documents (auto-filled) */}
+                            {customer_documents && customer_documents.length > 0 && (
+                                <div className="rounded-xl bg-white shadow-sm">
+                                    <div className="border-b border-gray-200 px-6 py-5">
+                                        <h3 className="text-lg font-semibold text-gray-900">Customer Documents</h3>
+                                        <p className="mt-0.5 text-sm text-gray-500">Auto-filled from customer profile. Verify before proceeding.</p>
+                                    </div>
+                                    <div className="divide-y divide-gray-100">
+                                        {customer_documents.map((doc) => (
+                                            <div key={doc.document_type_id} className={`flex items-center gap-4 px-6 py-3 ${doc.is_expired ? 'bg-red-50/50' : doc.is_expiring_soon ? 'bg-amber-50/50' : ''}`}>
+                                                <div className="flex-shrink-0">
+                                                    {doc.found ? (
+                                                        doc.is_expired ? (
+                                                            <span className="flex h-7 w-7 items-center justify-center rounded-full bg-red-100">
+                                                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="h-4 w-4 text-red-600"><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" /></svg>
+                                                            </span>
+                                                        ) : doc.is_expiring_soon ? (
+                                                            <span className="flex h-7 w-7 items-center justify-center rounded-full bg-amber-100">
+                                                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="h-4 w-4 text-amber-600"><path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                                            </span>
+                                                        ) : (
+                                                            <span className="flex h-7 w-7 items-center justify-center rounded-full bg-emerald-100">
+                                                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4 text-emerald-600"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clipRule="evenodd" /></svg>
+                                                            </span>
+                                                        )
+                                                    ) : (
+                                                        <span className="flex h-7 w-7 items-center justify-center rounded-full bg-gray-100">
+                                                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="h-4 w-4 text-gray-400"><path strokeLinecap="round" strokeLinejoin="round" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" /></svg>
+                                                        </span>
+                                                    )}
+                                                </div>
+                                                <div className="min-w-0 flex-1">
+                                                    <div className="flex items-center gap-2">
+                                                        <p className="text-sm font-medium text-gray-900">{doc.document_type_name}</p>
+                                                        {doc.is_required && <span className="text-xs text-red-500">*</span>}
+                                                        {!doc.found && <span className="rounded bg-gray-100 px-1.5 py-0.5 text-xs text-gray-500">Missing</span>}
+                                                        {doc.is_expired && <span className="rounded bg-red-100 px-1.5 py-0.5 text-xs font-medium text-red-700">Expired</span>}
+                                                        {doc.is_expiring_soon && !doc.is_expired && <span className="rounded bg-amber-100 px-1.5 py-0.5 text-xs font-medium text-amber-700">Expiring Soon</span>}
+                                                    </div>
+                                                    <div className="mt-0.5 flex flex-wrap items-center gap-3 text-xs text-gray-500">
+                                                        {doc.value && <span>{doc.value}</span>}
+                                                        {doc.expiry_date && <span>Expires: {doc.expiry_date}</span>}
+                                                    </div>
+                                                </div>
+                                                {doc.file_url && (
+                                                    <a href={doc.file_url} target="_blank" rel="noopener noreferrer" className="shrink-0 rounded-md bg-emerald-50 px-2.5 py-1.5 text-xs font-medium text-emerald-700 hover:bg-emerald-100">
+                                                        View
+                                                    </a>
+                                                )}
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
                             <div className="rounded-xl bg-white shadow-sm">
                                 <div className="border-b border-gray-200 px-6 py-5">
                                     <h3 className="text-lg font-semibold text-gray-900">{task.service_name} Form</h3>

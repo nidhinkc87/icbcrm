@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\DocumentType;
 use App\Models\Service;
 use App\Models\ServiceSubmission;
 use Illuminate\Http\RedirectResponse;
@@ -55,7 +56,9 @@ class ServiceController extends Controller
 
     public function create(): Response
     {
-        return Inertia::render('Admin/Services/Create');
+        return Inertia::render('Admin/Services/Create', [
+            'document_types' => DocumentType::where('is_active', true)->orderBy('sort_order')->get(['id', 'name', 'category']),
+        ]);
     }
 
     private function validationRules(): array
@@ -78,6 +81,8 @@ class ServiceController extends Controller
             'form_schema' => 'required|array|min:1',
             'completion_schema' => 'nullable|array',
             'is_active' => 'boolean',
+            'document_type_ids' => 'nullable|array',
+            'document_type_ids.*' => 'exists:document_types,id',
         ], $fieldRules('form_schema'), $fieldRules('completion_schema'));
     }
 
@@ -121,8 +126,14 @@ class ServiceController extends Controller
         $this->validateSchemaFields($request->input('completion_schema', []), 'completion_schema');
 
         $validated['completion_schema'] = $validated['completion_schema'] ?? [];
+        $docTypeIds = $validated['document_type_ids'] ?? [];
+        unset($validated['document_type_ids']);
 
-        Service::create($validated);
+        $service = Service::create($validated);
+
+        if (! empty($docTypeIds)) {
+            $service->documentTypes()->sync($docTypeIds);
+        }
 
         return redirect()->route('admin.services.index')
             ->with('success', 'Service created successfully.');
@@ -138,7 +149,9 @@ class ServiceController extends Controller
                 'form_schema' => $service->form_schema,
                 'completion_schema' => $service->completion_schema ?? [],
                 'is_active' => $service->is_active,
+                'document_type_ids' => $service->documentTypes()->pluck('document_types.id'),
             ],
+            'document_types' => DocumentType::where('is_active', true)->orderBy('sort_order')->get(['id', 'name', 'category']),
         ]);
     }
 
@@ -150,8 +163,11 @@ class ServiceController extends Controller
         $this->validateSchemaFields($request->input('completion_schema', []), 'completion_schema');
 
         $validated['completion_schema'] = $validated['completion_schema'] ?? [];
+        $docTypeIds = $validated['document_type_ids'] ?? [];
+        unset($validated['document_type_ids']);
 
         $service->update($validated);
+        $service->documentTypes()->sync($docTypeIds);
 
         return redirect()->route('admin.services.index')
             ->with('success', 'Service updated successfully.');

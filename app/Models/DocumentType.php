@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class DocumentType extends Model
@@ -38,5 +39,12 @@ class DocumentType extends Model
     public function expiryRules(): HasMany
     {
         return $this->hasMany(ExpiryActionRule::class);
+    }
+
+    public function services(): BelongsToMany
+    {
+        return $this->belongsToMany(Service::class, 'service_document_types')
+            ->withPivot('is_required')
+            ->withTimestamps();
     }
 }

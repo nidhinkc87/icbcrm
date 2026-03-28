@@ -9,24 +9,36 @@ import { FormField, ServiceData } from '@/types';
 import { Head, Link, useForm } from '@inertiajs/react';
 import { FormEventHandler } from 'react';
 
+interface DocType { id: number; name: string; category: string; }
+
 interface Props {
     service: ServiceData;
+    document_types?: DocType[];
 }
 
-export default function Edit({ service }: Props) {
+export default function Edit({ service, document_types }: Props) {
     const { data, setData, put, processing, errors } = useForm<{
         name: string;
         description: string;
         is_active: boolean;
         form_schema: FormField[];
         completion_schema: FormField[];
+        document_type_ids: number[];
     }>({
         name: service.name,
         description: service.description ?? '',
         is_active: service.is_active,
         form_schema: service.form_schema,
         completion_schema: service.completion_schema ?? [],
+        document_type_ids: service.document_type_ids ?? [],
     });
+
+    const toggleDocType = (id: number) => {
+        setData('document_type_ids', data.document_type_ids.includes(id)
+            ? data.document_type_ids.filter((d) => d !== id)
+            : [...data.document_type_ids, id]
+        );
+    };
 
     const submit: FormEventHandler = (e) => {
         e.preventDefault();
@@ -105,6 +117,38 @@ export default function Edit({ service }: Props) {
                                     errorPrefix="completion_schema"
                                 />
                             </div>
+
+                            {document_types && document_types.length > 0 && (
+                                <div className="mt-8 border-t border-gray-200 pt-6">
+                                    <h3 className="text-lg font-medium text-gray-900">Required Customer Documents</h3>
+                                    <p className="mt-1 text-sm text-gray-500">Select which customer documents are needed for this service. These will be auto-filled from the customer profile when an employee works on a task.</p>
+                                    <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                                        {(['company', 'partner', 'branch', 'other'] as const).map((category) => {
+                                            const docs = document_types.filter((d) => d.category === category);
+                                            if (docs.length === 0) return null;
+                                            return (
+                                                <div key={category} className="rounded-lg border border-gray-200 p-3">
+                                                    <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-400">{category}</p>
+                                                    <div className="space-y-1.5">
+                                                        {docs.map((dt) => (
+                                                            <label key={dt.id} className="flex items-center gap-2">
+                                                                <input
+                                                                    type="checkbox"
+                                                                    className="rounded border-gray-300 text-emerald-600 focus:ring-emerald-500"
+                                                                    checked={data.document_type_ids.includes(dt.id)}
+                                                                    onChange={() => toggleDocType(dt.id)}
+                                                                />
+                                                                <span className="text-sm text-gray-700">{dt.name}</span>
+                                                            </label>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                    <InputError message={errors.document_type_ids} className="mt-2" />
+                                </div>
+                            )}
 
                             <div className="mt-6 flex items-center justify-end space-x-4">
                                 <Link

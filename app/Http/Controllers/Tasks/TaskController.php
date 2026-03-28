@@ -462,7 +462,7 @@ class TaskController extends Controller
         abort_unless($task->canUserWork($user), 403);
         abort_if($task->status === 'completed', 403, 'Task is already completed.');
 
-        $task->load(['service:id,name,form_schema,completion_schema', 'customer.user:id,name', 'customerDocument.documentType:id,name']);
+        $task->load(['service.documentTypes:id,name,has_expiry,has_file,has_value', 'customer.user:id,name', 'customer.documents.documentType', 'customerDocument.documentType:id,name']);
 
         // Auto-transition to in_progress if pending
         if ($task->status === 'pending') {
@@ -488,6 +488,35 @@ class TaskController extends Controller
             ];
         }
 
+        // Auto-fill customer documents linked to this service
+        $requiredDocTypes = $task->service?->documentTypes ?? collect();
+        $customerDocs = $task->customer?->documents ?? collect();
+        $today = now()->startOfDay();
+
+        $customerDocuments = $requiredDocTypes->map(function ($docType) use ($customerDocs, $today) {
+            $doc = $customerDocs->firstWhere('document_type_id', $docType->id);
+            $isExpired = $doc?->expiry_date && $doc->expiry_date->lt($today);
+            $isExpiringSoon = $doc?->expiry_date && ! $isExpired && $doc->expiry_date->lte($today->copy()->addDays(30));
+
+            return [
+                'document_type_id' => $docType->id,
+                'document_type_name' => $docType->name,
+                'category' => $docType->category,
+                'has_file' => $docType->has_file,
+                'has_value' => $docType->has_value,
+                'has_expiry' => $docType->has_expiry,
+                'is_required' => $docType->pivot->is_required ?? true,
+                'found' => $doc !== null,
+                'value' => $doc?->value,
+                'file_url' => $doc?->file_path ? Storage::disk('public')->url($doc->file_path) : null,
+                'original_name' => $doc?->original_name,
+                'issue_date' => $doc?->issue_date?->format('M d, Y'),
+                'expiry_date' => $doc?->expiry_date?->format('M d, Y'),
+                'is_expired' => $isExpired,
+                'is_expiring_soon' => $isExpiringSoon,
+            ];
+        });
+
         return Inertia::render('Tasks/Complete', [
             'task' => [
                 'id' => $task->id,
@@ -503,6 +532,7 @@ class TaskController extends Controller
             'draft_data' => $draft?->form_data['form_data'] ?? $draft?->form_data ?? (object) [],
             'draft_completion_data' => $draft?->form_data['completion_data'] ?? (object) [],
             'linked_document' => $linkedDocument,
+            'customer_documents' => $customerDocuments,
         ]);
     }
 

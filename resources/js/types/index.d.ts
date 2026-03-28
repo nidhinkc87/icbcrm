@@ -42,6 +42,7 @@ export interface ServiceData {
     form_schema: FormField[];
     completion_schema: FormField[];
     is_active: boolean;
+    document_type_ids?: number[];
 }
 
 export type PageProps<
