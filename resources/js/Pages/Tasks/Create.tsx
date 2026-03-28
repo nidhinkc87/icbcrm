@@ -2,6 +2,7 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import InputError from '@/Components/InputError';
 import InputLabel from '@/Components/InputLabel';
 import PrimaryButton from '@/Components/PrimaryButton';
+import SearchableSelect from '@/Components/SearchableSelect';
 import SelectInput from '@/Components/SelectInput';
 import TextInput from '@/Components/TextInput';
 import { Head, Link, router } from '@inertiajs/react';
@@ -62,27 +63,18 @@ export default function Create({ services, customers, employees }: Props) {
                                 </div>
                                 <div className="grid grid-cols-1 gap-x-6 gap-y-4 pl-11 sm:grid-cols-2">
                                     <div>
-                                        <InputLabel htmlFor="service_id" value="Service *" />
-                                        <SelectInput id="service_id" value={data.service_id} className="mt-1 block w-full" onChange={(e) => setField('service_id', e.target.value)}>
-                                            <option value="">Select Service</option>
-                                            {services.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-                                        </SelectInput>
+                                        <InputLabel value="Service *" />
+                                        <SearchableSelect options={services} value={data.service_id} onChange={(val) => setField('service_id', val)} placeholder="Select Service" />
                                         <InputError message={errors.service_id} className="mt-1" />
                                     </div>
                                     <div>
-                                        <InputLabel htmlFor="customer_id" value="Customer *" />
-                                        <SelectInput id="customer_id" value={data.customer_id} className="mt-1 block w-full" onChange={(e) => setField('customer_id', e.target.value)}>
-                                            <option value="">Select Customer</option>
-                                            {customers.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-                                        </SelectInput>
+                                        <InputLabel value="Customer *" />
+                                        <SearchableSelect options={customers} value={data.customer_id} onChange={(val) => setField('customer_id', val)} placeholder="Select Customer" />
                                         <InputError message={errors.customer_id} className="mt-1" />
                                     </div>
                                     <div>
-                                        <InputLabel htmlFor="responsible_id" value="Responsible Person *" />
-                                        <SelectInput id="responsible_id" value={data.responsible_id} className="mt-1 block w-full" onChange={(e) => { setField('responsible_id', e.target.value); setCollaboratorIds((prev) => prev.filter((id) => id !== Number(e.target.value))); }}>
-                                            <option value="">Select Employee</option>
-                                            {employees.map((e) => <option key={e.id} value={e.id}>{e.name}</option>)}
-                                        </SelectInput>
+                                        <InputLabel value="Responsible Person *" />
+                                        <SearchableSelect options={employees} value={data.responsible_id} onChange={(val) => { setField('responsible_id', val); setCollaboratorIds((prev) => prev.filter((id) => id !== Number(val))); }} placeholder="Select Employee" />
                                         <InputError message={errors.responsible_id} className="mt-1" />
                                     </div>
                                     <div>
