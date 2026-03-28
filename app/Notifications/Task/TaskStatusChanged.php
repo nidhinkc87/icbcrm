@@ -11,6 +11,7 @@ use Illuminate\Notifications\Notification;
 class TaskStatusChanged extends Notification implements ShouldQueue
 {
     use Queueable;
+    use \App\Notifications\Concerns\BroadcastsToUser;
 
     public function __construct(
         protected Task $task,
@@ -20,7 +21,7 @@ class TaskStatusChanged extends Notification implements ShouldQueue
 
     public function via(object $notifiable): array
     {
-        return ['mail', 'database'];
+        return ['mail', 'database', 'broadcast'];
     }
 
     public function toMail(object $notifiable): MailMessage
