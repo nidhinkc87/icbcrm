@@ -71,6 +71,18 @@ interface PriorityBreakdown {
     completed: number;
 }
 
+interface ExpirationItem {
+    id: number;
+    customer_name: string;
+    customer_id: number;
+    document_type: string;
+    context: string | null;
+    reference: string | null;
+    expiry_date: string;
+    days_remaining: number;
+    is_expired: boolean;
+}
+
 interface PendingQuery {
     id: number;
     task_id: number;
@@ -98,6 +110,7 @@ interface Props extends PageProps {
     upcoming_tasks?: UpcomingTask[];
     service_progress?: ServiceProgress[];
     collaborator_tasks?: CollaboratorTask[];
+    upcoming_expirations?: ExpirationItem[];
     pending_queries?: PendingQuery[];
 }
 
@@ -232,7 +245,7 @@ function CustomTooltip({ active, payload, label }: any) {
     return null;
 }
 
-function AdminDashboard({ kpis, charts, recent_activity, overdue_tasks, pending_queries }: Props) {
+function AdminDashboard({ kpis, charts, recent_activity, overdue_tasks, upcoming_expirations, pending_queries }: Props) {
     return (
         <>
             {/* KPI Cards */}
@@ -354,6 +367,61 @@ function AdminDashboard({ kpis, charts, recent_activity, overdue_tasks, pending_
                     ) : <EmptyChart message="No service data" />}
                 </ChartCard>
             </div>
+
+            {/* Upcoming Document Expirations */}
+            {upcoming_expirations && upcoming_expirations.length > 0 && (
+                <ChartCard title="Upcoming Document Expirations" subtitle="Next 60 days">
+                    <div className="max-h-[350px] space-y-2 overflow-y-auto pr-1">
+                        {upcoming_expirations.map((item) => {
+                            const badgeClass = item.is_expired
+                                ? 'bg-red-100 text-red-700'
+                                : item.days_remaining === 0
+                                    ? 'bg-red-100 text-red-700'
+                                    : item.days_remaining <= 7
+                                        ? 'bg-amber-100 text-amber-700'
+                                        : item.days_remaining <= 30
+                                            ? 'bg-yellow-100 text-yellow-700'
+                                            : 'bg-green-100 text-green-700';
+
+                            const badgeText = item.is_expired
+                                ? `Expired ${Math.abs(item.days_remaining)} days ago`
+                                : item.days_remaining === 0
+                                    ? 'Expires today'
+                                    : `${item.days_remaining} days left`;
+
+                            return (
+                                <Link
+                                    key={item.id}
+                                    href={route('admin.users.show', item.customer_id)}
+                                    className="block rounded-lg border border-gray-100 p-3 transition hover:border-emerald-200 hover:bg-emerald-50/50"
+                                >
+                                    <div className="flex items-center justify-between gap-2">
+                                        <div className="flex items-center gap-2.5 min-w-0">
+                                            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-orange-50">
+                                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="h-4 w-4 text-orange-600">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
+                                                </svg>
+                                            </div>
+                                            <div className="min-w-0">
+                                                <p className="text-sm font-semibold text-gray-900 truncate">{item.document_type}</p>
+                                                <p className="text-xs text-gray-500 truncate">{item.customer_name}</p>
+                                                {(item.context || item.reference) && (
+                                                    <p className="text-xs text-gray-400 truncate">
+                                                        {item.context}{item.context && item.reference ? ' · ' : ''}{item.reference}
+                                                    </p>
+                                                )}
+                                            </div>
+                                        </div>
+                                        <span className={`inline-flex shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${badgeClass}`}>
+                                            {badgeText}
+                                        </span>
+                                    </div>
+                                </Link>
+                            );
+                        })}
+                    </div>
+                </ChartCard>
+            )}
 
             {/* Bottom Row: Activity + Overdue */}
             <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">

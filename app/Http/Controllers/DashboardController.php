@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Customer;
+use App\Models\CustomerDocument;
 use App\Models\Service;
 use App\Models\ServiceSubmission;
 use App\Models\Task;
@@ -133,6 +134,26 @@ class DashboardController extends Controller
             ->values()
             ->take(10);
 
+        // Upcoming expirations
+        $upcomingExpirations = CustomerDocument::whereNotNull('expiry_date')
+            ->where('expiry_date', '<=', $today->copy()->addDays(60))
+            ->where('expiry_date', '>=', $today->copy()->subDays(30)) // include recently expired
+            ->with(['customer.user:id,name', 'documentType:id,name', 'partner:id,name', 'branch:id,name'])
+            ->orderBy('expiry_date')
+            ->limit(15)
+            ->get()
+            ->map(fn (CustomerDocument $d) => [
+                'id' => $d->id,
+                'customer_name' => $d->customer?->user?->name ?? 'Unknown',
+                'customer_id' => $d->customer?->user_id,
+                'document_type' => $d->documentType?->name ?? 'Unknown',
+                'context' => $d->partner?->name ? "Partner: {$d->partner->name}" : ($d->branch?->name ? "Branch: {$d->branch->name}" : null),
+                'reference' => $d->value,
+                'expiry_date' => $d->expiry_date->format('M d, Y'),
+                'days_remaining' => (int) $today->diffInDays($d->expiry_date, false),
+                'is_expired' => $d->expiry_date->isPast(),
+            ]);
+
         // Overdue tasks
         $overdueTasks = Task::where('status', '!=', 'completed')
             ->where('due_date', '<', $today)
@@ -160,6 +181,7 @@ class DashboardController extends Controller
             ],
             'recent_activity' => $recentActivity,
             'overdue_tasks' => $overdueTasks,
+            'upcoming_expirations' => $upcomingExpirations,
             'pending_queries' => $this->pendingQueries($user),
         ];
     }
