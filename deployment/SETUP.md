@@ -24,48 +24,89 @@ This runs the following scheduled commands:
 
 All email notifications are queued (`ShouldQueue`). A queue worker must be running to process them.
 
-### Option A: Supervisor (Recommended for Production)
+### Supervisor Config
 
-1. Install Supervisor:
 ```bash
 sudo apt install supervisor
-```
-
-2. Copy the config:
-```bash
 sudo cp deployment/supervisor/icbcrm-worker.conf /etc/supervisor/conf.d/
+sudo cp deployment/supervisor/icbcrm-reverb.conf /etc/supervisor/conf.d/
 ```
 
-3. Update the path in the config file to match your server's project path.
+Update the paths in both config files to match your server's project path, then:
 
-4. Start the worker:
 ```bash
 sudo supervisorctl reread
 sudo supervisorctl update
-sudo supervisorctl start icbcrm-worker:*
+sudo supervisorctl start all
 ```
 
-5. Check status:
+Check status:
 ```bash
 sudo supervisorctl status
 ```
 
-### Option B: Simple (for testing / small deployments)
+## 3. Reverb (WebSocket Server)
 
-```bash
-php artisan queue:work --sleep=3 --tries=3 &
+Reverb provides real-time notifications via WebSocket.
+
+### .env Configuration (Production)
+
+```env
+REVERB_HOST="icb.calcker.com"
+REVERB_PORT=8080
+REVERB_SCHEME=https
+
+VITE_REVERB_APP_KEY="${REVERB_APP_KEY}"
+VITE_REVERB_HOST="${REVERB_HOST}"
+VITE_REVERB_PORT="${REVERB_PORT}"
+VITE_REVERB_SCHEME="${REVERB_SCHEME}"
 ```
 
-### After Deployment
+### Nginx Proxy (recommended)
 
-Always restart the queue worker after deploying new code:
+Add to your Nginx site config to proxy WebSocket through port 80/443:
+
+```nginx
+location /app {
+    proxy_http_version 1.1;
+    proxy_set_header Host $http_host;
+    proxy_set_header Scheme $scheme;
+    proxy_set_header SERVER_PORT $server_port;
+    proxy_set_header REMOTE_ADDR $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header Upgrade $http_upgrade;
+    proxy_set_header Connection "Upgrade";
+    proxy_pass http://127.0.0.1:8080;
+}
+```
+
+With Nginx proxy, clients connect on port 80/443 (no need to open 8080).
+
+### HTTPS / SSL
+
+When SSL is configured (e.g., via Certbot):
+1. Update `.env`: `REVERB_SCHEME=https`
+2. Nginx handles SSL termination, Reverb stays on http internally
+3. Rebuild frontend: `npm run build`
+
+## 4. Deployment Script
+
+After every deploy, run:
+
 ```bash
+cd /path-to-icbcrm
+git pull origin main
+composer install --no-dev --optimize-autoloader
+php artisan migrate --force
+php artisan config:cache
+php artisan route:cache
+php artisan view:cache
+npm run build
 php artisan queue:restart
+sudo supervisorctl restart all
 ```
 
-## 3. Manual Commands
-
-Run commands manually for testing:
+## 5. Manual Commands
 
 ```bash
 # Process queued emails now
@@ -85,11 +126,23 @@ php artisan queue:failed
 
 # Retry failed jobs
 php artisan queue:retry all
+
+# Start Reverb manually
+php artisan reverb:start
 ```
 
-## 4. Monitoring
+## 6. Monitoring
 
-Check pending/failed jobs:
 ```bash
+# Check pending/failed jobs
 php artisan tinker --execute="echo 'Pending: ' . DB::table('jobs')->count() . ' | Failed: ' . DB::table('failed_jobs')->count();"
+
+# Check Supervisor processes
+sudo supervisorctl status
+
+# Check Reverb logs
+tail -f storage/logs/reverb.log
+
+# Check queue worker logs
+tail -f storage/logs/worker.log
 ```
