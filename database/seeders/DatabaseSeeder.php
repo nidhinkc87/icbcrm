@@ -5,6 +5,8 @@ namespace Database\Seeders;
 use App\Models\User;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 
 class DatabaseSeeder extends Seeder
 {
@@ -17,24 +19,28 @@ class DatabaseSeeder extends Seeder
     {
         $this->call(RolesAndPermissionsSeeder::class);
 
-        $admin = User::factory()->create([
-            'name' => 'Admin',
-            'email' => 'admin@icbcrm.com',
-        ]);
+        $password = Hash::make('password');
+
+        $admin = User::updateOrCreate(
+            ['email' => 'admin@icbcrm.com'],
+            ['name' => 'Admin', 'password' => $password, 'email_verified_at' => now(), 'remember_token' => Str::random(10)]
+        );
         $admin->assignRole('admin');
 
-        $employee = User::factory()->create([
-            'name' => 'Test Employee',
-            'email' => 'employee@icbcrm.com',
-        ]);
+        $employee = User::updateOrCreate(
+            ['email' => 'employee@icbcrm.com'],
+            ['name' => 'Test Employee', 'password' => $password, 'email_verified_at' => now(), 'remember_token' => Str::random(10)]
+        );
         $employee->assignRole('employee');
 
-        $customer = User::factory()->create([
-            'name' => 'Test Client',
-            'email' => 'client@icbcrm.com',
-        ]);
+        $customer = User::updateOrCreate(
+            ['email' => 'client@icbcrm.com'],
+            ['name' => 'Test Client', 'password' => $password, 'email_verified_at' => now(), 'remember_token' => Str::random(10)]
+        );
         $customer->assignRole('customer');
 
         $this->call(SampleDataSeeder::class);
+        $this->call(DocumentTypeSeeder::class);
+        $this->call(ExpiryActionRuleSeeder::class);
     }
 }
