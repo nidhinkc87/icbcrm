@@ -255,35 +255,10 @@ class UserController extends Controller
         $role = $user->getRoleNames()->first();
 
         if ($role === 'customer') {
-            $user->load('customer.documents');
-
-            $documents = [];
-            if ($user->customer) {
-                foreach ($user->customer->documents as $doc) {
-                    $documents[] = [
-                        'id' => $doc->id,
-                        'type' => $doc->type,
-                        'label' => $doc->label,
-                        'original_name' => $doc->original_name,
-                        'url' => Storage::disk('public')->url($doc->file_path),
-                    ];
-                }
-            }
+            $user->load(['customer.documents.documentType', 'customer.partners', 'customer.branches', 'customer.bankDetail']);
 
             return Inertia::render('Admin/Users/ShowCustomer', [
-                'user' => [
-                    'id' => $user->id,
-                    'name' => $user->name,
-                    'email' => $user->email,
-                    'phone' => $user->customer?->phone,
-                    'address_line' => $user->customer?->address_line,
-                    'city' => $user->customer?->city,
-                    'emirate' => $user->customer?->emirate,
-                    'country' => $user->customer?->country ?? 'UAE',
-                    'po_box' => $user->customer?->po_box,
-                    'documents' => $documents,
-                    'created_at' => $user->created_at->format('M d, Y'),
-                ],
+                'user' => $this->buildCustomerData($user),
             ]);
         }
 
@@ -339,36 +314,12 @@ class UserController extends Controller
         $userRoles = $user->getRoleNames()->toArray();
 
         if ($role === 'customer') {
-            $user->load('customer.documents');
-
-            $documents = [];
-            if ($user->customer) {
-                foreach ($user->customer->documents as $doc) {
-                    $documents[] = [
-                        'id' => $doc->id,
-                        'type' => $doc->type,
-                        'label' => $doc->label,
-                        'original_name' => $doc->original_name,
-                        'url' => Storage::disk('public')->url($doc->file_path),
-                    ];
-                }
-            }
+            $user->load(['customer.documents.documentType', 'customer.partners', 'customer.branches', 'customer.bankDetail']);
 
             return Inertia::render('Admin/Users/EditCustomer', [
                 'allRoles' => $allRoles,
                 'userRoles' => $userRoles,
-                'user' => [
-                    'id' => $user->id,
-                    'name' => $user->name,
-                    'email' => $user->email,
-                    'phone' => $user->customer?->phone,
-                    'address_line' => $user->customer?->address_line,
-                    'city' => $user->customer?->city,
-                    'emirate' => $user->customer?->emirate,
-                    'country' => $user->customer?->country ?? 'UAE',
-                    'po_box' => $user->customer?->po_box,
-                    'documents' => $documents,
-                ],
+                'user' => $this->buildCustomerData($user),
             ]);
         }
 
@@ -645,6 +596,81 @@ class UserController extends Controller
         }
 
         $employee->save();
+    }
+
+    private function buildCustomerData(User $user): array
+    {
+        $c = $user->customer;
+        $docs = $c?->documents ?? collect();
+
+        $docUrl = fn ($slug, $partnerId = null, $branchId = null) => $docs
+            ->where('documentType.slug', $slug)
+            ->when($partnerId, fn ($q) => $q->where('partner_id', $partnerId))
+            ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
+            ->whereNull($partnerId ? null : 'partner_id')
+            ->whereNull($branchId ? null : 'branch_id')
+            ->first();
+
+        $fileUrl = fn ($doc) => $doc?->file_path ? Storage::disk('public')->url($doc->file_path) : null;
+
+        $tlDoc = $docs->filter(fn ($d) => $d->documentType?->slug === 'trade_license' && ! $d->partner_id && ! $d->branch_id)->first();
+        $moaDoc = $docs->filter(fn ($d) => $d->documentType?->slug === 'moa' && ! $d->partner_id && ! $d->branch_id)->first();
+
+        return [
+            'id' => $user->id,
+            'name' => $user->name,
+            'email' => $user->email,
+            'phone' => $c?->phone,
+            'address_line' => $c?->address_line,
+            'city' => $c?->city,
+            'emirate' => $c?->emirate,
+            'country' => $c?->country ?? 'UAE',
+            'po_box' => $c?->po_box,
+            'legal_type' => $c?->legal_type,
+            'trade_license_no' => $c?->trade_license_no,
+            'issuing_authority' => $c?->issuing_authority,
+            'contact_person_name' => $c?->contact_person_name,
+            'telephone' => $c?->telephone,
+            'trade_license_file_url' => $fileUrl($tlDoc),
+            'moa_file_url' => $fileUrl($moaDoc),
+            'trade_license_issue_date' => $tlDoc?->issue_date?->format('Y-m-d'),
+            'trade_license_expiry_date' => $tlDoc?->expiry_date?->format('Y-m-d'),
+            'partners' => ($c?->partners ?? collect())->map(function ($partner) use ($docs, $fileUrl) {
+                $eidDoc = $docs->filter(fn ($d) => $d->documentType?->slug === 'partner_emirates_id' && $d->partner_id === $partner->id)->first();
+                $passDoc = $docs->filter(fn ($d) => $d->documentType?->slug === 'partner_passport' && $d->partner_id === $partner->id)->first();
+
+                return [
+                    'id' => $partner->id,
+                    'name' => $partner->name,
+                    'emirates_id_no' => $eidDoc?->value,
+                    'emirates_id_file_url' => $fileUrl($eidDoc),
+                    'emirates_id_expiry' => $eidDoc?->expiry_date?->format('Y-m-d'),
+                    'passport_no' => $passDoc?->value,
+                    'passport_file_url' => $fileUrl($passDoc),
+                    'passport_expiry' => $passDoc?->expiry_date?->format('Y-m-d'),
+                ];
+            })->values(),
+            'bank_name' => $c?->bankDetail?->bank_name,
+            'bank_branch' => $c?->bankDetail?->branch,
+            'account_number' => $c?->bankDetail?->account_number,
+            'iban' => $c?->bankDetail?->iban,
+            'branches' => ($c?->branches ?? collect())->map(function ($branch) use ($docs, $fileUrl) {
+                $tlDoc = $docs->filter(fn ($d) => $d->documentType?->slug === 'branch_trade_license' && $d->branch_id === $branch->id)->first();
+                $authDoc = $docs->filter(fn ($d) => $d->documentType?->slug === 'branch_issuing_authority' && $d->branch_id === $branch->id)->first();
+                $moaDoc = $docs->filter(fn ($d) => $d->documentType?->slug === 'branch_moa' && $d->branch_id === $branch->id)->first();
+
+                return [
+                    'id' => $branch->id,
+                    'name' => $branch->name,
+                    'trade_license_no' => $tlDoc?->value,
+                    'issuing_authority' => $authDoc?->value,
+                    'moa_file_url' => $fileUrl($moaDoc),
+                    'issue_date' => $tlDoc?->issue_date?->format('Y-m-d'),
+                    'expiry_date' => $tlDoc?->expiry_date?->format('Y-m-d'),
+                ];
+            })->values(),
+            'created_at' => $user->created_at->format('M d, Y'),
+        ];
     }
 
     private function updateCustomerOnboarding($customer, Request $request, array $validated): void
