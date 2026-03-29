@@ -235,6 +235,7 @@ class TaskController extends Controller
             if ($sub) {
                 $submission = [
                     'form_data' => $sub->form_data,
+                    'document_snapshot' => $sub->form_data['document_snapshot'] ?? [],
                     'status' => $sub->status,
                     'created_at' => $sub->created_at->format('M d, Y H:i'),
                 ];
@@ -656,9 +657,13 @@ class TaskController extends Controller
         // Handle file uploads for completion form
         $this->processFileUploads($completionSchema, 'completion_data', $request, $task->service_id, $completionData, []);
 
+        // Snapshot customer documents at time of submission
+        $docSnapshot = $this->buildDocumentSnapshot($task, $request, $validated);
+
         $finalData = [
             'form_data' => $submissionData,
             'completion_data' => $completionData,
+            'document_snapshot' => $docSnapshot,
         ];
 
         if ($draft) {
@@ -694,9 +699,7 @@ class TaskController extends Controller
                     $updateData['expiry_date'] = $validated['doc_update_expiry_date'];
                 }
                 if ($request->hasFile('doc_update_file')) {
-                    if ($doc->file_path) {
-                        Storage::disk('public')->delete($doc->file_path);
-                    }
+                    // Don't delete old file - it may be referenced by previous task submissions
                     $file = $request->file('doc_update_file');
                     $updateData['file_path'] = $file->store("customer-documents/{$doc->customer_id}", 'public');
                     $updateData['original_name'] = $file->getClientOriginalName();
@@ -750,9 +753,7 @@ class TaskController extends Controller
                     : "completion_doc_updates.{$docTypeId}.file";
 
                 if ($request->hasFile($fileKey)) {
-                    if ($customerDoc->file_path) {
-                        Storage::disk('public')->delete($customerDoc->file_path);
-                    }
+                    // Don't delete old file - it may be referenced by previous task submissions
                     $file = $request->file($fileKey);
                     $customerDoc->file_path = $file->store("customer-documents/{$task->customer_id}", 'public');
                     $customerDoc->original_name = $file->getClientOriginalName();
@@ -806,6 +807,87 @@ class TaskController extends Controller
         }
 
         return redirect()->route('tasks.show', $task)->with('success', $successMessage);
+    }
+
+    private function buildDocumentSnapshot(Task $task, Request $request, array $validated): array
+    {
+        $snapshot = [];
+        $today = now()->startOfDay();
+
+        // Load required document types for this service
+        $requiredDocTypes = $task->service?->documentTypes ?? collect();
+        $customerDocs = $task->customer?->documents ?? collect();
+
+        foreach ($requiredDocTypes as $docType) {
+            $doc = $customerDocs->firstWhere('document_type_id', $docType->id);
+            $phase = $docType->pivot->phase ?? 'work';
+
+            // For work phase: snapshot the current customer profile data
+            // For completion phase: snapshot what the employee uploaded
+            $entry = [
+                'document_type_id' => $docType->id,
+                'document_type_name' => $docType->name,
+                'category' => $docType->category,
+                'phase' => $phase,
+                'has_file' => $docType->has_file,
+                'has_value' => $docType->has_value,
+                'has_expiry' => $docType->has_expiry,
+            ];
+
+            if ($phase === 'work') {
+                // Check if the employee edited this document
+                $workUpdate = $validated['work_doc_updates'][$docType->id] ?? null;
+                if ($workUpdate) {
+                    $entry['value'] = $workUpdate['value'] ?? $doc?->value;
+                    $entry['issue_date'] = $workUpdate['issue_date'] ?? $doc?->issue_date?->format('Y-m-d');
+                    $entry['expiry_date'] = $workUpdate['expiry_date'] ?? $doc?->expiry_date?->format('Y-m-d');
+
+                    // If a new file was uploaded, store it for the task
+                    if ($request->hasFile("work_doc_updates.{$docType->id}.file")) {
+                        $file = $request->file("work_doc_updates.{$docType->id}.file");
+                        $entry['file_path'] = $file->store("task-documents/{$task->id}", 'public');
+                        $entry['original_name'] = $file->getClientOriginalName();
+                    } else {
+                        $entry['file_path'] = $doc?->file_path;
+                        $entry['original_name'] = $doc?->original_name;
+                    }
+                } else {
+                    // Snapshot current customer profile values
+                    $entry['value'] = $doc?->value;
+                    $entry['file_path'] = $doc?->file_path;
+                    $entry['original_name'] = $doc?->original_name;
+                    $entry['issue_date'] = $doc?->issue_date?->format('Y-m-d');
+                    $entry['expiry_date'] = $doc?->expiry_date?->format('Y-m-d');
+                }
+            } else {
+                // Completion phase: snapshot what employee uploaded
+                $compUpdate = $validated['completion_doc_updates'][$docType->id] ?? null;
+                if ($compUpdate) {
+                    $entry['value'] = $compUpdate['value'] ?? null;
+                    $entry['issue_date'] = $compUpdate['issue_date'] ?? null;
+                    $entry['expiry_date'] = $compUpdate['expiry_date'] ?? null;
+
+                    if ($request->hasFile("completion_doc_updates.{$docType->id}.file")) {
+                        $file = $request->file("completion_doc_updates.{$docType->id}.file");
+                        $entry['file_path'] = $file->store("task-documents/{$task->id}", 'public');
+                        $entry['original_name'] = $file->getClientOriginalName();
+                    } else {
+                        $entry['file_path'] = null;
+                        $entry['original_name'] = null;
+                    }
+                } else {
+                    $entry['value'] = null;
+                    $entry['file_path'] = null;
+                    $entry['original_name'] = null;
+                    $entry['issue_date'] = null;
+                    $entry['expiry_date'] = null;
+                }
+            }
+
+            $snapshot[] = $entry;
+        }
+
+        return $snapshot;
     }
 
     private function resolveAutofillData(array $allFields, ?Customer $customer): array

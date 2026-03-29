@@ -58,8 +58,24 @@ interface TaskDetail {
     can_manage_collaborators: boolean;
 }
 
+interface DocSnapshot {
+    document_type_id: number;
+    document_type_name: string;
+    category: string;
+    phase: 'work' | 'completion';
+    has_file: boolean;
+    has_value: boolean;
+    has_expiry: boolean;
+    value: string | null;
+    file_path: string | null;
+    original_name: string | null;
+    issue_date: string | null;
+    expiry_date: string | null;
+}
+
 interface SubmissionData {
     form_data: Record<string, any>;
+    document_snapshot?: DocSnapshot[];
     status: string;
     created_at: string;
 }
@@ -530,24 +546,63 @@ export default function Show({ task, submission, form_schema, completion_schema,
                                                         );
                                                     };
 
+                                                    const workDocSnaps = (submission.document_snapshot ?? []).filter((d) => d.phase === 'work');
+                                                    const compDocSnaps = (submission.document_snapshot ?? []).filter((d) => d.phase === 'completion');
+
+                                                    const renderDocSnapshot = (doc: DocSnapshot) => (
+                                                        <div key={`${doc.phase}_${doc.document_type_id}`} className="py-3 sm:grid sm:grid-cols-3 sm:gap-4">
+                                                            <dt className="text-sm font-medium text-gray-500">{doc.document_type_name}</dt>
+                                                            <dd className="mt-1 text-sm text-gray-900 sm:col-span-2 sm:mt-0">
+                                                                <div className="flex flex-wrap items-center gap-3">
+                                                                    {doc.has_value && (doc.value ? <span>{doc.value}</span> : <span className="text-gray-400">No value</span>)}
+                                                                    {doc.has_expiry && doc.issue_date && <span className="text-xs text-gray-500">Issued: {doc.issue_date}</span>}
+                                                                    {doc.has_expiry && doc.expiry_date && <span className="text-xs text-gray-500">Expires: {doc.expiry_date}</span>}
+                                                                    {doc.has_file && (doc.file_path ? (
+                                                                        <a href={`/storage/${doc.file_path}`} target="_blank" rel="noopener noreferrer" className="text-emerald-600 underline hover:text-emerald-900 text-xs">View File</a>
+                                                                    ) : <span className="text-gray-400 text-xs">No file</span>)}
+                                                                </div>
+                                                            </dd>
+                                                        </div>
+                                                    );
+
                                                     return (
                                                         <>
-                                                            {form_schema.length > 0 && (
+                                                            {(form_schema.length > 0 || workDocSnaps.length > 0) && (
                                                                 <>
                                                                     <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1">Work Form</p>
-                                                                    <dl className="divide-y divide-gray-100 mb-6">
-                                                                        {form_schema.map((f) => renderSubmissionField(f, workData))}
-                                                                    </dl>
+                                                                    {workDocSnaps.length > 0 && (
+                                                                        <div className="mb-3 rounded-lg border border-gray-100 bg-gray-50 p-3">
+                                                                            <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 mb-1">Customer Documents</p>
+                                                                            <dl className="divide-y divide-gray-100">
+                                                                                {workDocSnaps.map(renderDocSnapshot)}
+                                                                            </dl>
+                                                                        </div>
+                                                                    )}
+                                                                    {form_schema.length > 0 && (
+                                                                        <dl className="divide-y divide-gray-100 mb-6">
+                                                                            {form_schema.map((f) => renderSubmissionField(f, workData))}
+                                                                        </dl>
+                                                                    )}
                                                                 </>
                                                             )}
-                                                            {completion_schema && completion_schema.length > 0 && (
+                                                            {(completion_schema && completion_schema.length > 0) || compDocSnaps.length > 0 ? (
                                                                 <>
-                                                                    <p className="text-xs font-semibold uppercase tracking-wider text-amber-500 mb-1">Completion Evidence</p>
-                                                                    <dl className="divide-y divide-gray-100">
-                                                                        {completion_schema.map((f) => renderSubmissionField(f, compData))}
-                                                                    </dl>
+                                                                    <p className="text-xs font-semibold uppercase tracking-wider text-amber-500 mb-1">Completion</p>
+                                                                    {compDocSnaps.length > 0 && (
+                                                                        <div className="mb-3 rounded-lg border border-amber-100 bg-amber-50/50 p-3">
+                                                                            <p className="text-[10px] font-semibold uppercase tracking-wider text-amber-400 mb-1">Uploaded Documents</p>
+                                                                            <dl className="divide-y divide-amber-100">
+                                                                                {compDocSnaps.map(renderDocSnapshot)}
+                                                                            </dl>
+                                                                        </div>
+                                                                    )}
+                                                                    {completion_schema && completion_schema.length > 0 && (
+                                                                        <dl className="divide-y divide-gray-100">
+                                                                            {completion_schema.map((f) => renderSubmissionField(f, compData))}
+                                                                        </dl>
+                                                                    )}
                                                                 </>
-                                                            )}
+                                                            ) : null}
                                                         </>
                                                     );
                                                 })()}
