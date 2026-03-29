@@ -58,7 +58,79 @@ class ServiceController extends Controller
     {
         return Inertia::render('Admin/Services/Create', [
             'document_types' => DocumentType::where('is_active', true)->orderBy('sort_order')->get(['id', 'name', 'category']),
+            'autofill_sources' => $this->buildAutofillSources(),
         ]);
+    }
+
+    private function buildAutofillSources(): array
+    {
+        $sources = [];
+
+        // Customer profile fields
+        $customerFields = [
+            'trade_license_no' => 'Trade License No',
+            'legal_type' => 'Legal Type',
+            'issuing_authority' => 'Issuing Authority',
+            'contact_person_name' => 'Contact Person Name',
+            'phone' => 'Phone',
+            'telephone' => 'Telephone',
+            'address_line' => 'Address',
+            'city' => 'City',
+            'emirate' => 'Emirate',
+            'country' => 'Country',
+            'po_box' => 'PO Box',
+        ];
+
+        foreach ($customerFields as $key => $label) {
+            $sources[] = [
+                'value' => "customer:{$key}",
+                'label' => $label,
+                'group' => 'Customer Profile',
+            ];
+        }
+
+        // Bank detail fields
+        $bankFields = [
+            'bank_name' => 'Bank Name',
+            'branch' => 'Bank Branch',
+            'account_number' => 'Account Number',
+            'iban' => 'IBAN',
+        ];
+
+        foreach ($bankFields as $key => $label) {
+            $sources[] = [
+                'value' => "bank:{$key}",
+                'label' => $label,
+                'group' => 'Bank Details',
+            ];
+        }
+
+        // Document type fields
+        $documentTypes = DocumentType::where('is_active', true)->orderBy('sort_order')->get();
+
+        foreach ($documentTypes as $dt) {
+            if ($dt->has_value) {
+                $sources[] = [
+                    'value' => "document_value:{$dt->id}",
+                    'label' => "{$dt->name} - Number/Value",
+                    'group' => 'Customer Documents',
+                ];
+            }
+            if ($dt->has_expiry) {
+                $sources[] = [
+                    'value' => "document_issue_date:{$dt->id}",
+                    'label' => "{$dt->name} - Issue Date",
+                    'group' => 'Customer Documents',
+                ];
+                $sources[] = [
+                    'value' => "document_expiry_date:{$dt->id}",
+                    'label' => "{$dt->name} - Expiry Date",
+                    'group' => 'Customer Documents',
+                ];
+            }
+        }
+
+        return $sources;
     }
 
     private function validationRules(): array
@@ -72,6 +144,9 @@ class ServiceController extends Controller
                 "{$prefix}.*.placeholder" => 'nullable|string|max:255',
                 "{$prefix}.*.options" => 'nullable|array',
                 "{$prefix}.*.options.*" => 'required|string|max:255',
+                "{$prefix}.*.source" => 'nullable|array',
+                "{$prefix}.*.source.type" => 'nullable|string|in:customer,document_value,document_issue_date,document_expiry_date,bank',
+                "{$prefix}.*.source.key" => 'nullable|string|max:255',
             ];
         };
 
@@ -165,6 +240,7 @@ class ServiceController extends Controller
                 'completion_document_type_ids' => $service->completionDocumentTypes()->pluck('document_types.id'),
             ],
             'document_types' => DocumentType::where('is_active', true)->orderBy('sort_order')->get(['id', 'name', 'category']),
+            'autofill_sources' => $this->buildAutofillSources(),
         ]);
     }
 

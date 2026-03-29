@@ -26,6 +26,11 @@ export interface Paginated<T> {
 
 export type FormFieldType = 'text' | 'textarea' | 'dropdown' | 'file' | 'image' | 'checkbox' | 'date' | 'number';
 
+export interface FormFieldSource {
+    type: 'customer' | 'document_value' | 'document_issue_date' | 'document_expiry_date' | 'bank';
+    key: string;
+}
+
 export interface FormField {
     name: string;
     label: string;
@@ -33,6 +38,7 @@ export interface FormField {
     required: boolean;
     placeholder: string;
     options: string[];
+    source?: FormFieldSource | null;
 }
 
 export interface ServiceData {

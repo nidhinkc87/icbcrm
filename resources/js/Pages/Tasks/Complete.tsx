@@ -57,6 +57,7 @@ interface Props extends PageProps {
     draft_completion_data: Record<string, any>;
     linked_document?: LinkedDocument | null;
     customer_documents?: CustomerDoc[];
+    autofill_data?: Record<string, string>;
 }
 
 const priorityColors: Record<string, string> = {
@@ -66,13 +67,16 @@ const priorityColors: Record<string, string> = {
     urgent: 'bg-red-100 text-red-700',
 };
 
-export default function Complete({ task, form_schema, draft_data, completion_schema, draft_completion_data, linked_document, customer_documents }: Props) {
+export default function Complete({ task, form_schema, draft_data, completion_schema, draft_completion_data, linked_document, customer_documents, autofill_data }: Props) {
     const { flash } = usePage<PageProps>().props;
+    const autofill = autofill_data ?? {};
     const [formData, setFormData] = useState<Record<string, any>>(() => {
         const initial: Record<string, any> = {};
         form_schema.forEach((field) => {
             if (draft_data[field.name] !== undefined && draft_data[field.name] !== null) {
                 initial[field.name] = draft_data[field.name];
+            } else if (autofill[field.name] !== undefined) {
+                initial[field.name] = autofill[field.name];
             } else {
                 initial[field.name] = field.type === 'checkbox' ? false : '';
             }

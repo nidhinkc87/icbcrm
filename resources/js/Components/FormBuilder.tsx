@@ -1,4 +1,4 @@
-import { FormField, FormFieldType } from '@/types';
+import { FormField, FormFieldType, FormFieldSource } from '@/types';
 import InputError from '@/Components/InputError';
 import InputLabel from '@/Components/InputLabel';
 import TextInput from '@/Components/TextInput';
@@ -15,6 +15,12 @@ const FIELD_TYPES: { value: FormFieldType; label: string }[] = [
     { value: 'file', label: 'File Upload' },
     { value: 'image', label: 'Image Upload' },
 ];
+
+export interface AutofillOption {
+    value: string; // e.g. "customer:trade_license_no" or "document_value:5"
+    label: string; // e.g. "Customer > Trade License No"
+    group: string; // e.g. "Customer Profile"
+}
 
 function slugify(text: string): string {
     return text
@@ -41,9 +47,27 @@ interface FormBuilderProps {
     title?: string;
     description?: string;
     errorPrefix?: string;
+    autofillSources?: AutofillOption[];
 }
 
-export default function FormBuilder({ fields, onChange, errors = {}, title = 'Form Fields', description, errorPrefix = 'form_schema' }: FormBuilderProps) {
+export default function FormBuilder({ fields, onChange, errors = {}, title = 'Form Fields', description, errorPrefix = 'form_schema', autofillSources }: FormBuilderProps) {
+    const parseSourceValue = (val: string): FormFieldSource | null => {
+        if (!val) return null;
+        const [type, key] = val.split(':');
+        return { type: type as FormFieldSource['type'], key };
+    };
+
+    const toSourceValue = (source?: FormFieldSource | null): string => {
+        if (!source) return '';
+        return `${source.type}:${source.key}`;
+    };
+
+    const groupedSources = (autofillSources ?? []).reduce<Record<string, AutofillOption[]>>((acc, opt) => {
+        if (!acc[opt.group]) acc[opt.group] = [];
+        acc[opt.group].push(opt);
+        return acc;
+    }, {});
+
     const addField = () => {
         onChange([
             ...fields,
@@ -54,6 +78,7 @@ export default function FormBuilder({ fields, onChange, errors = {}, title = 'Fo
                 required: false,
                 placeholder: '',
                 options: [],
+                source: null,
             },
         ]);
     };
@@ -230,6 +255,26 @@ export default function FormBuilder({ fields, onChange, errors = {}, title = 'Fo
                                     <span className="text-sm text-gray-700">Required</span>
                                 </label>
                             </div>
+
+                            {autofillSources && autofillSources.length > 0 && field.type !== 'file' && field.type !== 'image' && field.type !== 'checkbox' && (
+                                <div className="sm:col-span-2">
+                                    <InputLabel value="Auto-fill from customer data" />
+                                    <select
+                                        value={toSourceValue(field.source)}
+                                        className="mt-1 block w-full rounded-md border-gray-300 text-sm shadow-sm focus:border-emerald-500 focus:ring-emerald-500"
+                                        onChange={(e) => updateField(index, 'source', parseSourceValue(e.target.value))}
+                                    >
+                                        <option value="">No auto-fill</option>
+                                        {Object.entries(groupedSources).map(([group, options]) => (
+                                            <optgroup key={group} label={group}>
+                                                {options.map((opt) => (
+                                                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                                                ))}
+                                            </optgroup>
+                                        ))}
+                                    </select>
+                                </div>
+                            )}
                         </div>
 
                         {field.type === 'dropdown' && (

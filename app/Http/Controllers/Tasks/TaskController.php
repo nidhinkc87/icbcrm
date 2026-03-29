@@ -519,6 +519,12 @@ class TaskController extends Controller
             ];
         });
 
+        // Resolve auto-fill values from customer data
+        $autofillData = $this->resolveAutofillData(
+            array_merge($task->service?->form_schema ?? [], $task->service?->completion_schema ?? []),
+            $task->customer,
+        );
+
         return Inertia::render('Tasks/Complete', [
             'task' => [
                 'id' => $task->id,
@@ -535,6 +541,7 @@ class TaskController extends Controller
             'draft_completion_data' => $draft?->form_data['completion_data'] ?? (object) [],
             'linked_document' => $linkedDocument,
             'customer_documents' => $customerDocuments,
+            'autofill_data' => $autofillData,
         ]);
     }
 
@@ -799,6 +806,70 @@ class TaskController extends Controller
         }
 
         return redirect()->route('tasks.show', $task)->with('success', $successMessage);
+    }
+
+    private function resolveAutofillData(array $allFields, ?Customer $customer): array
+    {
+        if (! $customer) {
+            return [];
+        }
+
+        $result = [];
+        $customerDocs = null;
+        $bankDetail = null;
+
+        foreach ($allFields as $field) {
+            $source = $field['source'] ?? null;
+            if (! $source || empty($source['type']) || empty($source['key'])) {
+                continue;
+            }
+
+            $fieldName = $field['name'];
+            $value = null;
+
+            switch ($source['type']) {
+                case 'customer':
+                    $value = $customer->{$source['key']} ?? null;
+                    break;
+
+                case 'bank':
+                    if ($bankDetail === null) {
+                        $bankDetail = $customer->bankDetail;
+                    }
+                    $value = $bankDetail?->{$source['key']} ?? null;
+                    break;
+
+                case 'document_value':
+                    if ($customerDocs === null) {
+                        $customerDocs = $customer->documents;
+                    }
+                    $doc = $customerDocs->firstWhere('document_type_id', (int) $source['key']);
+                    $value = $doc?->value;
+                    break;
+
+                case 'document_issue_date':
+                    if ($customerDocs === null) {
+                        $customerDocs = $customer->documents;
+                    }
+                    $doc = $customerDocs->firstWhere('document_type_id', (int) $source['key']);
+                    $value = $doc?->issue_date?->format('Y-m-d');
+                    break;
+
+                case 'document_expiry_date':
+                    if ($customerDocs === null) {
+                        $customerDocs = $customer->documents;
+                    }
+                    $doc = $customerDocs->firstWhere('document_type_id', (int) $source['key']);
+                    $value = $doc?->expiry_date?->format('Y-m-d');
+                    break;
+            }
+
+            if ($value !== null && $value !== '') {
+                $result[$fieldName] = $value;
+            }
+        }
+
+        return $result;
     }
 
     private function buildFieldRules(array $schema, string $prefix, array $draftData, array &$rules): void

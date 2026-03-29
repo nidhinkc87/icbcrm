@@ -1,6 +1,6 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import Checkbox from '@/Components/Checkbox';
-import FormBuilder from '@/Components/FormBuilder';
+import FormBuilder, { AutofillOption } from '@/Components/FormBuilder';
 import InputError from '@/Components/InputError';
 import InputLabel from '@/Components/InputLabel';
 import PrimaryButton from '@/Components/PrimaryButton';
@@ -14,9 +14,10 @@ interface DocType { id: number; name: string; category: string; }
 interface Props {
     service: ServiceData;
     document_types?: DocType[];
+    autofill_sources?: AutofillOption[];
 }
 
-export default function Edit({ service, document_types }: Props) {
+export default function Edit({ service, document_types, autofill_sources }: Props) {
     const { data, setData, put, processing, errors } = useForm<{
         name: string;
         description: string;
@@ -113,6 +114,7 @@ export default function Edit({ service, document_types }: Props) {
                                     onChange={(fields) => setData('form_schema', fields)}
                                     errors={errors}
                                     errorPrefix="form_schema"
+                                    autofillSources={autofill_sources}
                                 />
 
                                 {document_types && document_types.length > 0 && (
@@ -156,6 +158,7 @@ export default function Edit({ service, document_types }: Props) {
                                     onChange={(fields) => setData('completion_schema', fields)}
                                     errors={errors}
                                     errorPrefix="completion_schema"
+                                    autofillSources={autofill_sources}
                                 />
 
                                 {document_types && document_types.length > 0 && (

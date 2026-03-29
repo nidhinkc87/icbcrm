@@ -1,6 +1,6 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import Checkbox from '@/Components/Checkbox';
-import FormBuilder from '@/Components/FormBuilder';
+import FormBuilder, { AutofillOption } from '@/Components/FormBuilder';
 import InputError from '@/Components/InputError';
 import InputLabel from '@/Components/InputLabel';
 import PrimaryButton from '@/Components/PrimaryButton';
@@ -11,7 +11,7 @@ import { FormEventHandler } from 'react';
 
 interface DocType { id: number; name: string; category: string; }
 
-export default function Create({ document_types }: { document_types?: DocType[] }) {
+export default function Create({ document_types, autofill_sources }: { document_types?: DocType[]; autofill_sources?: AutofillOption[] }) {
     const { data, setData, post, processing, errors } = useForm<{
         name: string;
         description: string;
@@ -108,6 +108,7 @@ export default function Create({ document_types }: { document_types?: DocType[] 
                                     onChange={(fields) => setData('form_schema', fields)}
                                     errors={errors}
                                     errorPrefix="form_schema"
+                                    autofillSources={autofill_sources}
                                 />
 
                                 {document_types && document_types.length > 0 && (
@@ -151,6 +152,7 @@ export default function Create({ document_types }: { document_types?: DocType[] 
                                     onChange={(fields) => setData('completion_schema', fields)}
                                     errors={errors}
                                     errorPrefix="completion_schema"
+                                    autofillSources={autofill_sources}
                                 />
 
                                 {document_types && document_types.length > 0 && (
