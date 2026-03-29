@@ -13,7 +13,23 @@ class Service extends Model
     public function documentTypes(): BelongsToMany
     {
         return $this->belongsToMany(DocumentType::class, 'service_document_types')
-            ->withPivot('is_required')
+            ->withPivot('is_required', 'phase')
+            ->withTimestamps();
+    }
+
+    public function workDocumentTypes(): BelongsToMany
+    {
+        return $this->belongsToMany(DocumentType::class, 'service_document_types')
+            ->wherePivot('phase', 'work')
+            ->withPivot('is_required', 'phase')
+            ->withTimestamps();
+    }
+
+    public function completionDocumentTypes(): BelongsToMany
+    {
+        return $this->belongsToMany(DocumentType::class, 'service_document_types')
+            ->wherePivot('phase', 'completion')
+            ->withPivot('is_required', 'phase')
             ->withTimestamps();
     }
 

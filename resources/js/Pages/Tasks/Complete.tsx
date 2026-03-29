@@ -34,6 +34,7 @@ interface CustomerDoc {
     document_type_id: number;
     document_type_name: string;
     category: string;
+    phase: 'work' | 'completion';
     has_file: boolean;
     has_value: boolean;
     has_expiry: boolean;
@@ -101,6 +102,41 @@ export default function Complete({ task, form_schema, draft_data, completion_sch
         expiry_date: linked_document?.current_expiry_date ?? '',
     });
     const [docUpdateFile, setDocUpdateFile] = useState<File | null>(null);
+
+    // Work phase docs: editable with auto-filled values
+    const workDocs = (customer_documents ?? []).filter((d) => d.phase === 'work');
+    const completionDocs = (customer_documents ?? []).filter((d) => d.phase === 'completion');
+
+    const [workDocUpdates, setWorkDocUpdates] = useState<Record<number, { value: string; issue_date: string; expiry_date: string; editing: boolean; update_profile: boolean }>>(() => {
+        const initial: Record<number, any> = {};
+        workDocs.forEach((doc) => {
+            initial[doc.document_type_id] = {
+                value: doc.value ?? '',
+                issue_date: doc.issue_date ?? '',
+                expiry_date: doc.expiry_date ?? '',
+                editing: false,
+                update_profile: false,
+            };
+        });
+        return initial;
+    });
+    const [workDocFiles, setWorkDocFiles] = useState<Record<number, File | null>>({});
+
+    // Completion phase docs: empty fields for new uploads
+    const [completionDocUpdates, setCompletionDocUpdates] = useState<Record<number, { value: string; issue_date: string; expiry_date: string; update_profile: boolean }>>(() => {
+        const initial: Record<number, any> = {};
+        completionDocs.forEach((doc) => {
+            initial[doc.document_type_id] = {
+                value: '',
+                issue_date: '',
+                expiry_date: '',
+                update_profile: true,
+            };
+        });
+        return initial;
+    });
+    const [completionDocFiles, setCompletionDocFiles] = useState<Record<number, File | null>>({});
+
     const [followupDueDate, setFollowupDueDate] = useState('');
     const [followupStartDate, setFollowupStartDate] = useState('');
     const [followupNotes, setFollowupNotes] = useState('');
@@ -168,6 +204,36 @@ export default function Complete({ task, form_schema, draft_data, completion_sch
             if (docUpdate.issue_date) data.append('doc_update_issue_date', docUpdate.issue_date);
             if (docUpdate.expiry_date) data.append('doc_update_expiry_date', docUpdate.expiry_date);
         }
+
+        // Work phase document updates
+        workDocs.forEach((doc) => {
+            const upd = workDocUpdates[doc.document_type_id];
+            if (!upd || !upd.editing) return;
+            const prefix = `work_doc_updates[${doc.document_type_id}]`;
+            data.append(`${prefix}[value]`, upd.value);
+            data.append(`${prefix}[issue_date]`, upd.issue_date);
+            data.append(`${prefix}[expiry_date]`, upd.expiry_date);
+            data.append(`${prefix}[update_profile]`, upd.update_profile ? '1' : '0');
+            if (workDocFiles[doc.document_type_id]) {
+                data.append(`${prefix}[file]`, workDocFiles[doc.document_type_id]!);
+            }
+        });
+
+        // Completion phase document uploads
+        completionDocs.forEach((doc) => {
+            const upd = completionDocUpdates[doc.document_type_id];
+            if (!upd) return;
+            const hasData = upd.value || upd.issue_date || upd.expiry_date || completionDocFiles[doc.document_type_id];
+            if (!hasData) return;
+            const prefix = `completion_doc_updates[${doc.document_type_id}]`;
+            data.append(`${prefix}[value]`, upd.value);
+            data.append(`${prefix}[issue_date]`, upd.issue_date);
+            data.append(`${prefix}[expiry_date]`, upd.expiry_date);
+            data.append(`${prefix}[update_profile]`, upd.update_profile ? '1' : '0');
+            if (completionDocFiles[doc.document_type_id]) {
+                data.append(`${prefix}[file]`, completionDocFiles[doc.document_type_id]!);
+            }
+        });
 
         return data;
     };
@@ -400,57 +466,161 @@ export default function Complete({ task, form_schema, draft_data, completion_sch
 
                         {/* LEFT: Form */}
                         <div className="lg:col-span-8 lg:order-1 space-y-6">
-                            {/* Customer Documents (auto-filled) */}
-                            {customer_documents && customer_documents.length > 0 && (
+                            {/* ===== WORK SECTION ===== */}
+                            <div className="flex items-center gap-3">
+                                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-100">
+                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="h-4 w-4 text-emerald-600"><path strokeLinecap="round" strokeLinejoin="round" d="M11.42 15.17l-5.3-3.06a1.5 1.5 0 010-2.58l5.3-3.06a1.5 1.5 0 011.58 0l5.3 3.06a1.5 1.5 0 010 2.58l-5.3 3.06a1.5 1.5 0 01-1.58 0z" /><path strokeLinecap="round" strokeLinejoin="round" d="M3.75 12l5.3 3.06a1.5 1.5 0 001.58 0l5.3-3.06" /></svg>
+                                </div>
+                                <div>
+                                    <h2 className="text-base font-semibold text-gray-900">Work</h2>
+                                    <p className="text-xs text-gray-500">Documents and form fields needed while working on this task</p>
+                                </div>
+                            </div>
+
+                            {/* Work Phase Customer Documents - Auto-filled, editable */}
+                            {workDocs.length > 0 && (
                                 <div className="rounded-xl bg-white shadow-sm">
                                     <div className="border-b border-gray-200 px-6 py-5">
-                                        <h3 className="text-lg font-semibold text-gray-900">Customer Documents</h3>
-                                        <p className="mt-0.5 text-sm text-gray-500">Auto-filled from customer profile. Verify before proceeding.</p>
+                                        <h3 className="text-lg font-semibold text-gray-900">Required Customer Documents</h3>
+                                        <p className="mt-0.5 text-sm text-gray-500">Auto-filled from customer profile. Click edit to update.</p>
                                     </div>
                                     <div className="divide-y divide-gray-100">
-                                        {customer_documents.map((doc) => (
-                                            <div key={doc.document_type_id} className={`flex items-center gap-4 px-6 py-3 ${doc.is_expired ? 'bg-red-50/50' : doc.is_expiring_soon ? 'bg-amber-50/50' : ''}`}>
-                                                <div className="flex-shrink-0">
-                                                    {doc.found ? (
-                                                        doc.is_expired ? (
-                                                            <span className="flex h-7 w-7 items-center justify-center rounded-full bg-red-100">
-                                                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="h-4 w-4 text-red-600"><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" /></svg>
-                                                            </span>
-                                                        ) : doc.is_expiring_soon ? (
-                                                            <span className="flex h-7 w-7 items-center justify-center rounded-full bg-amber-100">
-                                                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="h-4 w-4 text-amber-600"><path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                                                            </span>
-                                                        ) : (
-                                                            <span className="flex h-7 w-7 items-center justify-center rounded-full bg-emerald-100">
-                                                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4 text-emerald-600"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clipRule="evenodd" /></svg>
-                                                            </span>
-                                                        )
-                                                    ) : (
-                                                        <span className="flex h-7 w-7 items-center justify-center rounded-full bg-gray-100">
-                                                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="h-4 w-4 text-gray-400"><path strokeLinecap="round" strokeLinejoin="round" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" /></svg>
-                                                        </span>
+                                        {workDocs.map((doc) => {
+                                            const upd = workDocUpdates[doc.document_type_id];
+                                            const isEditing = upd?.editing;
+                                            return (
+                                                <div key={doc.document_type_id} className={`px-6 py-4 ${doc.is_expired ? 'bg-red-50/50' : doc.is_expiring_soon ? 'bg-amber-50/50' : ''}`}>
+                                                    <div className="flex items-center gap-4">
+                                                        <div className="flex-shrink-0">
+                                                            {doc.found ? (
+                                                                doc.is_expired ? (
+                                                                    <span className="flex h-7 w-7 items-center justify-center rounded-full bg-red-100">
+                                                                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="h-4 w-4 text-red-600"><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" /></svg>
+                                                                    </span>
+                                                                ) : doc.is_expiring_soon ? (
+                                                                    <span className="flex h-7 w-7 items-center justify-center rounded-full bg-amber-100">
+                                                                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="h-4 w-4 text-amber-600"><path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                                                    </span>
+                                                                ) : (
+                                                                    <span className="flex h-7 w-7 items-center justify-center rounded-full bg-emerald-100">
+                                                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4 text-emerald-600"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clipRule="evenodd" /></svg>
+                                                                    </span>
+                                                                )
+                                                            ) : (
+                                                                <span className="flex h-7 w-7 items-center justify-center rounded-full bg-gray-100">
+                                                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="h-4 w-4 text-gray-400"><path strokeLinecap="round" strokeLinejoin="round" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" /></svg>
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                        <div className="min-w-0 flex-1">
+                                                            <div className="flex items-center gap-2">
+                                                                <p className="text-sm font-medium text-gray-900">{doc.document_type_name}</p>
+                                                                {doc.is_required && <span className="text-xs text-red-500">*</span>}
+                                                                {!doc.found && <span className="rounded bg-gray-100 px-1.5 py-0.5 text-xs text-gray-500">Missing</span>}
+                                                                {doc.is_expired && <span className="rounded bg-red-100 px-1.5 py-0.5 text-xs font-medium text-red-700">Expired</span>}
+                                                                {doc.is_expiring_soon && !doc.is_expired && <span className="rounded bg-amber-100 px-1.5 py-0.5 text-xs font-medium text-amber-700">Expiring Soon</span>}
+                                                            </div>
+                                                            {!isEditing && (
+                                                                <div className="mt-0.5 flex flex-wrap items-center gap-3 text-xs text-gray-500">
+                                                                    {doc.value && <span>{doc.value}</span>}
+                                                                    {doc.expiry_date && <span>Expires: {doc.expiry_date}</span>}
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                        <div className="flex items-center gap-2">
+                                                            {doc.file_url && (
+                                                                <a href={doc.file_url} target="_blank" rel="noopener noreferrer" className="shrink-0 rounded-md bg-emerald-50 px-2.5 py-1.5 text-xs font-medium text-emerald-700 hover:bg-emerald-100">
+                                                                    View
+                                                                </a>
+                                                            )}
+                                                            <button
+                                                                type="button"
+                                                                className={`shrink-0 rounded-md px-2.5 py-1.5 text-xs font-medium ${isEditing ? 'bg-gray-100 text-gray-600 hover:bg-gray-200' : 'bg-blue-50 text-blue-700 hover:bg-blue-100'}`}
+                                                                onClick={() => setWorkDocUpdates((prev) => ({
+                                                                    ...prev,
+                                                                    [doc.document_type_id]: { ...prev[doc.document_type_id], editing: !prev[doc.document_type_id].editing },
+                                                                }))}
+                                                            >
+                                                                {isEditing ? 'Cancel' : 'Edit'}
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                    {isEditing && upd && (
+                                                        <div className="mt-3 ml-11 space-y-3 rounded-lg border border-gray-200 bg-gray-50 p-4">
+                                                            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                                                                {doc.has_value && (
+                                                                    <div>
+                                                                        <InputLabel value="Document Number / Value" />
+                                                                        <TextInput
+                                                                            value={upd.value}
+                                                                            className="mt-1 block w-full text-sm"
+                                                                            onChange={(e) => setWorkDocUpdates((prev) => ({
+                                                                                ...prev,
+                                                                                [doc.document_type_id]: { ...prev[doc.document_type_id], value: e.target.value },
+                                                                            }))}
+                                                                        />
+                                                                    </div>
+                                                                )}
+                                                                {doc.has_file && (
+                                                                    <div>
+                                                                        <InputLabel value="Upload New File" />
+                                                                        <input
+                                                                            type="file"
+                                                                            accept=".pdf,.jpg,.jpeg,.png"
+                                                                            className="mt-1 block w-full text-sm text-gray-500 file:mr-3 file:rounded-md file:border-0 file:bg-emerald-50 file:px-3 file:py-1.5 file:text-xs file:font-medium file:text-emerald-700 hover:file:bg-emerald-100"
+                                                                            onChange={(e) => setWorkDocFiles((prev) => ({
+                                                                                ...prev,
+                                                                                [doc.document_type_id]: e.target.files?.[0] ?? null,
+                                                                            }))}
+                                                                        />
+                                                                    </div>
+                                                                )}
+                                                                {doc.has_expiry && (
+                                                                    <>
+                                                                        <div>
+                                                                            <InputLabel value="Issue Date" />
+                                                                            <TextInput
+                                                                                type="date"
+                                                                                value={upd.issue_date}
+                                                                                className="mt-1 block w-full text-sm"
+                                                                                onChange={(e) => setWorkDocUpdates((prev) => ({
+                                                                                    ...prev,
+                                                                                    [doc.document_type_id]: { ...prev[doc.document_type_id], issue_date: e.target.value },
+                                                                                }))}
+                                                                            />
+                                                                        </div>
+                                                                        <div>
+                                                                            <InputLabel value="Expiry Date" />
+                                                                            <TextInput
+                                                                                type="date"
+                                                                                value={upd.expiry_date}
+                                                                                className="mt-1 block w-full text-sm"
+                                                                                onChange={(e) => setWorkDocUpdates((prev) => ({
+                                                                                    ...prev,
+                                                                                    [doc.document_type_id]: { ...prev[doc.document_type_id], expiry_date: e.target.value },
+                                                                                }))}
+                                                                            />
+                                                                        </div>
+                                                                    </>
+                                                                )}
+                                                            </div>
+                                                            <label className="flex items-center gap-2 rounded-md bg-blue-50 px-3 py-2">
+                                                                <input
+                                                                    type="checkbox"
+                                                                    className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                                                                    checked={upd.update_profile}
+                                                                    onChange={(e) => setWorkDocUpdates((prev) => ({
+                                                                        ...prev,
+                                                                        [doc.document_type_id]: { ...prev[doc.document_type_id], update_profile: e.target.checked },
+                                                                    }))}
+                                                                />
+                                                                <span className="text-xs text-blue-700">Also update this document in customer profile</span>
+                                                            </label>
+                                                        </div>
                                                     )}
                                                 </div>
-                                                <div className="min-w-0 flex-1">
-                                                    <div className="flex items-center gap-2">
-                                                        <p className="text-sm font-medium text-gray-900">{doc.document_type_name}</p>
-                                                        {doc.is_required && <span className="text-xs text-red-500">*</span>}
-                                                        {!doc.found && <span className="rounded bg-gray-100 px-1.5 py-0.5 text-xs text-gray-500">Missing</span>}
-                                                        {doc.is_expired && <span className="rounded bg-red-100 px-1.5 py-0.5 text-xs font-medium text-red-700">Expired</span>}
-                                                        {doc.is_expiring_soon && !doc.is_expired && <span className="rounded bg-amber-100 px-1.5 py-0.5 text-xs font-medium text-amber-700">Expiring Soon</span>}
-                                                    </div>
-                                                    <div className="mt-0.5 flex flex-wrap items-center gap-3 text-xs text-gray-500">
-                                                        {doc.value && <span>{doc.value}</span>}
-                                                        {doc.expiry_date && <span>Expires: {doc.expiry_date}</span>}
-                                                    </div>
-                                                </div>
-                                                {doc.file_url && (
-                                                    <a href={doc.file_url} target="_blank" rel="noopener noreferrer" className="shrink-0 rounded-md bg-emerald-50 px-2.5 py-1.5 text-xs font-medium text-emerald-700 hover:bg-emerald-100">
-                                                        View
-                                                    </a>
-                                                )}
-                                            </div>
-                                        ))}
+                                            );
+                                        })}
                                     </div>
                                 </div>
                             )}
@@ -485,6 +655,119 @@ export default function Complete({ task, form_schema, draft_data, completion_sch
                                     </form>
                                 )}
                             </div>
+
+                            {/* ===== COMPLETION SECTION ===== */}
+                            {((completionDocs.length > 0) || (completion_schema && completion_schema.length > 0)) && (
+                                <>
+                                    <div className="relative mt-2">
+                                        <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-gray-200" /></div>
+                                        <div className="relative flex justify-center"><span className="bg-gray-50 px-3 text-xs font-medium uppercase tracking-wider text-gray-400">Completion</span></div>
+                                    </div>
+
+                                    <div className="flex items-center gap-3">
+                                        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-100">
+                                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="h-4 w-4 text-amber-600"><path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                        </div>
+                                        <div>
+                                            <h2 className="text-base font-semibold text-gray-900">Completion</h2>
+                                            <p className="text-xs text-gray-500">Upload new documents and evidence after completing the work</p>
+                                        </div>
+                                    </div>
+                                </>
+                            )}
+
+                            {/* Completion Phase Customer Documents - Empty upload fields */}
+                            {completionDocs.length > 0 && (
+                                <div className="rounded-xl bg-white shadow-sm">
+                                    <div className="border-b border-gray-200 px-6 py-5">
+                                        <h3 className="text-lg font-semibold text-gray-900">Upload Customer Documents</h3>
+                                        <p className="mt-0.5 text-sm text-gray-500">Upload new documents received after completing this task.</p>
+                                    </div>
+                                    <div className="divide-y divide-gray-100">
+                                        {completionDocs.map((doc) => {
+                                            const upd = completionDocUpdates[doc.document_type_id];
+                                            return (
+                                                <div key={`comp_${doc.document_type_id}`} className="px-6 py-4">
+                                                    <div className="flex items-center gap-2 mb-3">
+                                                        <p className="text-sm font-medium text-gray-900">{doc.document_type_name}</p>
+                                                        {doc.is_required && <span className="text-xs text-red-500">*</span>}
+                                                    </div>
+                                                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                                                        {doc.has_value && (
+                                                            <div>
+                                                                <InputLabel value="Document Number / Value" />
+                                                                <TextInput
+                                                                    value={upd?.value ?? ''}
+                                                                    className="mt-1 block w-full text-sm"
+                                                                    placeholder={`Enter ${doc.document_type_name} number`}
+                                                                    onChange={(e) => setCompletionDocUpdates((prev) => ({
+                                                                        ...prev,
+                                                                        [doc.document_type_id]: { ...prev[doc.document_type_id], value: e.target.value },
+                                                                    }))}
+                                                                />
+                                                            </div>
+                                                        )}
+                                                        {doc.has_file && (
+                                                            <div>
+                                                                <InputLabel value="Upload Document" />
+                                                                <input
+                                                                    type="file"
+                                                                    accept=".pdf,.jpg,.jpeg,.png"
+                                                                    className="mt-1 block w-full text-sm text-gray-500 file:mr-3 file:rounded-md file:border-0 file:bg-emerald-50 file:px-3 file:py-1.5 file:text-xs file:font-medium file:text-emerald-700 hover:file:bg-emerald-100"
+                                                                    onChange={(e) => setCompletionDocFiles((prev) => ({
+                                                                        ...prev,
+                                                                        [doc.document_type_id]: e.target.files?.[0] ?? null,
+                                                                    }))}
+                                                                />
+                                                            </div>
+                                                        )}
+                                                        {doc.has_expiry && (
+                                                            <>
+                                                                <div>
+                                                                    <InputLabel value="Issue Date" />
+                                                                    <TextInput
+                                                                        type="date"
+                                                                        value={upd?.issue_date ?? ''}
+                                                                        className="mt-1 block w-full text-sm"
+                                                                        onChange={(e) => setCompletionDocUpdates((prev) => ({
+                                                                            ...prev,
+                                                                            [doc.document_type_id]: { ...prev[doc.document_type_id], issue_date: e.target.value },
+                                                                        }))}
+                                                                    />
+                                                                </div>
+                                                                <div>
+                                                                    <InputLabel value="Expiry Date" />
+                                                                    <TextInput
+                                                                        type="date"
+                                                                        value={upd?.expiry_date ?? ''}
+                                                                        className="mt-1 block w-full text-sm"
+                                                                        onChange={(e) => setCompletionDocUpdates((prev) => ({
+                                                                            ...prev,
+                                                                            [doc.document_type_id]: { ...prev[doc.document_type_id], expiry_date: e.target.value },
+                                                                        }))}
+                                                                    />
+                                                                </div>
+                                                            </>
+                                                        )}
+                                                    </div>
+                                                    <label className="mt-3 flex items-center gap-2 rounded-md bg-blue-50 px-3 py-2">
+                                                        <input
+                                                            type="checkbox"
+                                                            className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                                                            checked={upd?.update_profile ?? true}
+                                                            onChange={(e) => setCompletionDocUpdates((prev) => ({
+                                                                ...prev,
+                                                                [doc.document_type_id]: { ...prev[doc.document_type_id], update_profile: e.target.checked },
+                                                            }))}
+                                                        />
+                                                        <span className="text-xs text-blue-700">Also update this document in customer profile</span>
+                                                    </label>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            )}
 
                             {/* Completion Evidence - Separate Card */}
                             {completion_schema && completion_schema.length > 0 && (

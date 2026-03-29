@@ -24,6 +24,7 @@ export default function Edit({ service, document_types }: Props) {
         form_schema: FormField[];
         completion_schema: FormField[];
         document_type_ids: number[];
+        completion_document_type_ids: number[];
     }>({
         name: service.name,
         description: service.description ?? '',
@@ -31,12 +32,20 @@ export default function Edit({ service, document_types }: Props) {
         form_schema: service.form_schema,
         completion_schema: service.completion_schema ?? [],
         document_type_ids: service.document_type_ids ?? [],
+        completion_document_type_ids: service.completion_document_type_ids ?? [],
     });
 
     const toggleDocType = (id: number) => {
         setData('document_type_ids', data.document_type_ids.includes(id)
             ? data.document_type_ids.filter((d) => d !== id)
             : [...data.document_type_ids, id]
+        );
+    };
+
+    const toggleCompletionDocType = (id: number) => {
+        setData('completion_document_type_ids', data.completion_document_type_ids.includes(id)
+            ? data.completion_document_type_ids.filter((d) => d !== id)
+            : [...data.completion_document_type_ids, id]
         );
     };
 
@@ -105,6 +114,38 @@ export default function Edit({ service, document_types }: Props) {
                                     errors={errors}
                                     errorPrefix="form_schema"
                                 />
+
+                                {document_types && document_types.length > 0 && (
+                                    <div className="mt-6 rounded-lg border border-gray-200 p-4">
+                                        <h4 className="text-sm font-medium text-gray-900">Required Customer Documents</h4>
+                                        <p className="mt-1 text-xs text-gray-500">Select which customer documents are needed for this service. These will be auto-filled from the customer profile when an employee works on a task.</p>
+                                        <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                                            {(['company', 'partner', 'branch', 'other'] as const).map((category) => {
+                                                const docs = document_types.filter((d) => d.category === category);
+                                                if (docs.length === 0) return null;
+                                                return (
+                                                    <div key={category} className="rounded-lg border border-gray-200 p-3">
+                                                        <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-400">{category}</p>
+                                                        <div className="space-y-1.5">
+                                                            {docs.map((dt) => (
+                                                                <label key={dt.id} className="flex items-center gap-2">
+                                                                    <input
+                                                                        type="checkbox"
+                                                                        className="rounded border-gray-300 text-emerald-600 focus:ring-emerald-500"
+                                                                        checked={data.document_type_ids.includes(dt.id)}
+                                                                        onChange={() => toggleDocType(dt.id)}
+                                                                    />
+                                                                    <span className="text-sm text-gray-700">{dt.name}</span>
+                                                                </label>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                        <InputError message={errors.document_type_ids} className="mt-2" />
+                                    </div>
+                                )}
                             </div>
 
                             <div className="mt-8 border-t border-gray-200 pt-6">
@@ -116,39 +157,39 @@ export default function Edit({ service, document_types }: Props) {
                                     errors={errors}
                                     errorPrefix="completion_schema"
                                 />
-                            </div>
 
-                            {document_types && document_types.length > 0 && (
-                                <div className="mt-8 border-t border-gray-200 pt-6">
-                                    <h3 className="text-lg font-medium text-gray-900">Required Customer Documents</h3>
-                                    <p className="mt-1 text-sm text-gray-500">Select which customer documents are needed for this service. These will be auto-filled from the customer profile when an employee works on a task.</p>
-                                    <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
-                                        {(['company', 'partner', 'branch', 'other'] as const).map((category) => {
-                                            const docs = document_types.filter((d) => d.category === category);
-                                            if (docs.length === 0) return null;
-                                            return (
-                                                <div key={category} className="rounded-lg border border-gray-200 p-3">
-                                                    <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-400">{category}</p>
-                                                    <div className="space-y-1.5">
-                                                        {docs.map((dt) => (
-                                                            <label key={dt.id} className="flex items-center gap-2">
-                                                                <input
-                                                                    type="checkbox"
-                                                                    className="rounded border-gray-300 text-emerald-600 focus:ring-emerald-500"
-                                                                    checked={data.document_type_ids.includes(dt.id)}
-                                                                    onChange={() => toggleDocType(dt.id)}
-                                                                />
-                                                                <span className="text-sm text-gray-700">{dt.name}</span>
-                                                            </label>
-                                                        ))}
+                                {document_types && document_types.length > 0 && (
+                                    <div className="mt-6 rounded-lg border border-gray-200 p-4">
+                                        <h4 className="text-sm font-medium text-gray-900">Required Customer Documents</h4>
+                                        <p className="mt-1 text-xs text-gray-500">Select which customer documents are required to complete this task.</p>
+                                        <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                                            {(['company', 'partner', 'branch', 'other'] as const).map((category) => {
+                                                const docs = document_types.filter((d) => d.category === category);
+                                                if (docs.length === 0) return null;
+                                                return (
+                                                    <div key={category} className="rounded-lg border border-gray-200 p-3">
+                                                        <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-400">{category}</p>
+                                                        <div className="space-y-1.5">
+                                                            {docs.map((dt) => (
+                                                                <label key={dt.id} className="flex items-center gap-2">
+                                                                    <input
+                                                                        type="checkbox"
+                                                                        className="rounded border-gray-300 text-emerald-600 focus:ring-emerald-500"
+                                                                        checked={data.completion_document_type_ids.includes(dt.id)}
+                                                                        onChange={() => toggleCompletionDocType(dt.id)}
+                                                                    />
+                                                                    <span className="text-sm text-gray-700">{dt.name}</span>
+                                                                </label>
+                                                            ))}
+                                                        </div>
                                                     </div>
-                                                </div>
-                                            );
-                                        })}
+                                                );
+                                            })}
+                                        </div>
+                                        <InputError message={errors.completion_document_type_ids} className="mt-2" />
                                     </div>
-                                    <InputError message={errors.document_type_ids} className="mt-2" />
-                                </div>
-                            )}
+                                )}
+                            </div>
 
                             <div className="mt-6 flex items-center justify-end space-x-4">
                                 <Link

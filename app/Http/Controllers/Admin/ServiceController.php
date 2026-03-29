@@ -78,11 +78,13 @@ class ServiceController extends Controller
         return array_merge([
             'name' => 'required|string|max:255',
             'description' => 'nullable|string|max:1000',
-            'form_schema' => 'required|array|min:1',
+            'form_schema' => 'nullable|array',
             'completion_schema' => 'nullable|array',
             'is_active' => 'boolean',
             'document_type_ids' => 'nullable|array',
             'document_type_ids.*' => 'exists:document_types,id',
+            'completion_document_type_ids' => 'nullable|array',
+            'completion_document_type_ids.*' => 'exists:document_types,id',
         ], $fieldRules('form_schema'), $fieldRules('completion_schema'));
     }
 
@@ -125,14 +127,24 @@ class ServiceController extends Controller
         $this->validateSchemaFields($request->input('form_schema', []), 'form_schema');
         $this->validateSchemaFields($request->input('completion_schema', []), 'completion_schema');
 
+        $validated['form_schema'] = $validated['form_schema'] ?? [];
         $validated['completion_schema'] = $validated['completion_schema'] ?? [];
         $docTypeIds = $validated['document_type_ids'] ?? [];
-        unset($validated['document_type_ids']);
+        $completionDocTypeIds = $validated['completion_document_type_ids'] ?? [];
+        unset($validated['document_type_ids'], $validated['completion_document_type_ids']);
 
         $service = Service::create($validated);
 
-        if (! empty($docTypeIds)) {
-            $service->documentTypes()->sync($docTypeIds);
+        $syncData = [];
+        foreach ($docTypeIds as $id) {
+            $syncData[] = ['document_type_id' => $id, 'phase' => 'work'];
+        }
+        foreach ($completionDocTypeIds as $id) {
+            $syncData[] = ['document_type_id' => $id, 'phase' => 'completion'];
+        }
+        $service->documentTypes()->detach();
+        foreach ($syncData as $row) {
+            $service->documentTypes()->attach($row['document_type_id'], ['phase' => $row['phase']]);
         }
 
         return redirect()->route('admin.services.index')
@@ -149,7 +161,8 @@ class ServiceController extends Controller
                 'form_schema' => $service->form_schema,
                 'completion_schema' => $service->completion_schema ?? [],
                 'is_active' => $service->is_active,
-                'document_type_ids' => $service->documentTypes()->pluck('document_types.id'),
+                'document_type_ids' => $service->workDocumentTypes()->pluck('document_types.id'),
+                'completion_document_type_ids' => $service->completionDocumentTypes()->pluck('document_types.id'),
             ],
             'document_types' => DocumentType::where('is_active', true)->orderBy('sort_order')->get(['id', 'name', 'category']),
         ]);
@@ -162,12 +175,21 @@ class ServiceController extends Controller
         $this->validateSchemaFields($request->input('form_schema', []), 'form_schema');
         $this->validateSchemaFields($request->input('completion_schema', []), 'completion_schema');
 
+        $validated['form_schema'] = $validated['form_schema'] ?? [];
         $validated['completion_schema'] = $validated['completion_schema'] ?? [];
         $docTypeIds = $validated['document_type_ids'] ?? [];
-        unset($validated['document_type_ids']);
+        $completionDocTypeIds = $validated['completion_document_type_ids'] ?? [];
+        unset($validated['document_type_ids'], $validated['completion_document_type_ids']);
 
         $service->update($validated);
-        $service->documentTypes()->sync($docTypeIds);
+
+        $service->documentTypes()->detach();
+        foreach ($docTypeIds as $id) {
+            $service->documentTypes()->attach($id, ['phase' => 'work']);
+        }
+        foreach ($completionDocTypeIds as $id) {
+            $service->documentTypes()->attach($id, ['phase' => 'completion']);
+        }
 
         return redirect()->route('admin.services.index')
             ->with('success', 'Service updated successfully.');

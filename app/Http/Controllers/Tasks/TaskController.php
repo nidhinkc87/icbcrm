@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Tasks;
 
 use App\Http\Controllers\Controller;
 use App\Models\Customer;
+use App\Models\CustomerDocument;
 use App\Models\Service;
 use App\Models\Task;
 use App\Models\ServiceSubmission;
@@ -488,7 +489,7 @@ class TaskController extends Controller
             ];
         }
 
-        // Auto-fill customer documents linked to this service
+        // Auto-fill customer documents linked to this service (both work and completion phases)
         $requiredDocTypes = $task->service?->documentTypes ?? collect();
         $customerDocs = $task->customer?->documents ?? collect();
         $today = now()->startOfDay();
@@ -502,6 +503,7 @@ class TaskController extends Controller
                 'document_type_id' => $docType->id,
                 'document_type_name' => $docType->name,
                 'category' => $docType->category,
+                'phase' => $docType->pivot->phase ?? 'work',
                 'has_file' => $docType->has_file,
                 'has_value' => $docType->has_value,
                 'has_expiry' => $docType->has_expiry,
@@ -623,6 +625,20 @@ class TaskController extends Controller
             $rules['doc_update_expiry_date'] = 'nullable|date|after:doc_update_issue_date';
         }
 
+        // Work & completion phase document updates
+        $rules['work_doc_updates'] = 'nullable|array';
+        $rules['work_doc_updates.*.value'] = 'nullable|string|max:255';
+        $rules['work_doc_updates.*.file'] = 'nullable|file|mimes:pdf,jpg,jpeg,png|max:10240';
+        $rules['work_doc_updates.*.issue_date'] = 'nullable|date';
+        $rules['work_doc_updates.*.expiry_date'] = 'nullable|date';
+        $rules['work_doc_updates.*.update_profile'] = 'nullable';
+        $rules['completion_doc_updates'] = 'nullable|array';
+        $rules['completion_doc_updates.*.value'] = 'nullable|string|max:255';
+        $rules['completion_doc_updates.*.file'] = 'nullable|file|mimes:pdf,jpg,jpeg,png|max:10240';
+        $rules['completion_doc_updates.*.issue_date'] = 'nullable|date';
+        $rules['completion_doc_updates.*.expiry_date'] = 'nullable|date';
+        $rules['completion_doc_updates.*.update_profile'] = 'nullable';
+
         $validated = $request->validate($rules);
         $submissionData = $validated['form_data'] ?? [];
         $completionData = $validated['completion_data'] ?? [];
@@ -682,6 +698,60 @@ class TaskController extends Controller
                 if (! empty($updateData)) {
                     $doc->update($updateData);
                 }
+            }
+        }
+
+        // Process work & completion phase document updates
+        $allDocUpdates = array_merge(
+            $validated['work_doc_updates'] ?? [],
+            $validated['completion_doc_updates'] ?? []
+        );
+
+        if (! empty($allDocUpdates) && $task->customer_id) {
+            foreach ($allDocUpdates as $docTypeId => $docData) {
+                $shouldUpdateProfile = ! empty($docData['update_profile']) && $docData['update_profile'] !== '0';
+                if (! $shouldUpdateProfile) {
+                    continue;
+                }
+
+                $hasAnyData = ! empty($docData['value']) || ! empty($docData['issue_date']) || ! empty($docData['expiry_date'])
+                    || $request->hasFile("work_doc_updates.{$docTypeId}.file")
+                    || $request->hasFile("completion_doc_updates.{$docTypeId}.file");
+
+                if (! $hasAnyData) {
+                    continue;
+                }
+
+                $customerDoc = CustomerDocument::firstOrNew([
+                    'customer_id' => $task->customer_id,
+                    'document_type_id' => $docTypeId,
+                ]);
+
+                if (! empty($docData['value'])) {
+                    $customerDoc->value = $docData['value'];
+                }
+                if (! empty($docData['issue_date'])) {
+                    $customerDoc->issue_date = $docData['issue_date'];
+                }
+                if (! empty($docData['expiry_date'])) {
+                    $customerDoc->expiry_date = $docData['expiry_date'];
+                }
+
+                // Check both work and completion file keys
+                $fileKey = $request->hasFile("work_doc_updates.{$docTypeId}.file")
+                    ? "work_doc_updates.{$docTypeId}.file"
+                    : "completion_doc_updates.{$docTypeId}.file";
+
+                if ($request->hasFile($fileKey)) {
+                    if ($customerDoc->file_path) {
+                        Storage::disk('public')->delete($customerDoc->file_path);
+                    }
+                    $file = $request->file($fileKey);
+                    $customerDoc->file_path = $file->store("customer-documents/{$task->customer_id}", 'public');
+                    $customerDoc->original_name = $file->getClientOriginalName();
+                }
+
+                $customerDoc->save();
             }
         }
 
