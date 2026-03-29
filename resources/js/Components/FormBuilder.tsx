@@ -4,6 +4,7 @@ import InputLabel from '@/Components/InputLabel';
 import TextInput from '@/Components/TextInput';
 import SelectInput from '@/Components/SelectInput';
 import Checkbox from '@/Components/Checkbox';
+import { useEffect, useRef, useState } from 'react';
 
 const FIELD_TYPES: { value: FormFieldType; label: string }[] = [
     { value: 'text', label: 'Text' },
@@ -259,20 +260,12 @@ export default function FormBuilder({ fields, onChange, errors = {}, title = 'Fo
                             {autofillSources && autofillSources.length > 0 && field.type !== 'file' && field.type !== 'image' && field.type !== 'checkbox' && (
                                 <div className="sm:col-span-2">
                                     <InputLabel value="Auto-fill from customer data" />
-                                    <select
+                                    <SearchableAutofillSelect
                                         value={toSourceValue(field.source)}
-                                        className="mt-1 block w-full rounded-md border-gray-300 text-sm shadow-sm focus:border-emerald-500 focus:ring-emerald-500"
-                                        onChange={(e) => updateField(index, 'source', parseSourceValue(e.target.value))}
-                                    >
-                                        <option value="">No auto-fill</option>
-                                        {Object.entries(groupedSources).map(([group, options]) => (
-                                            <optgroup key={group} label={group}>
-                                                {options.map((opt) => (
-                                                    <option key={opt.value} value={opt.value}>{opt.label}</option>
-                                                ))}
-                                            </optgroup>
-                                        ))}
-                                    </select>
+                                        groupedOptions={groupedSources}
+                                        allOptions={autofillSources}
+                                        onChange={(val) => updateField(index, 'source', parseSourceValue(val))}
+                                    />
                                 </div>
                             )}
                         </div>
@@ -322,6 +315,107 @@ export default function FormBuilder({ fields, onChange, errors = {}, title = 'Fo
             </div>
 
             <InputError message={errors[errorPrefix]} className="mt-2" />
+        </div>
+    );
+}
+
+function SearchableAutofillSelect({ value, groupedOptions, allOptions, onChange }: {
+    value: string;
+    groupedOptions: Record<string, AutofillOption[]>;
+    allOptions: AutofillOption[];
+    onChange: (value: string) => void;
+}) {
+    const [open, setOpen] = useState(false);
+    const [search, setSearch] = useState('');
+    const ref = useRef<HTMLDivElement>(null);
+    const inputRef = useRef<HTMLInputElement>(null);
+
+    const selected = allOptions.find((o) => o.value === value);
+    const query = search.toLowerCase();
+
+    const filteredGroups = Object.entries(groupedOptions).reduce<Record<string, AutofillOption[]>>((acc, [group, opts]) => {
+        const filtered = opts.filter((o) =>
+            o.label.toLowerCase().includes(query) || group.toLowerCase().includes(query)
+        );
+        if (filtered.length > 0) acc[group] = filtered;
+        return acc;
+    }, {});
+
+    const hasResults = Object.keys(filteredGroups).length > 0;
+
+    useEffect(() => {
+        const handleClick = (e: MouseEvent) => {
+            if (ref.current && !ref.current.contains(e.target as Node)) {
+                setOpen(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClick);
+        return () => document.removeEventListener('mousedown', handleClick);
+    }, []);
+
+    useEffect(() => {
+        if (open && inputRef.current) {
+            inputRef.current.focus();
+        }
+    }, [open]);
+
+    return (
+        <div ref={ref} className="relative">
+            <button
+                type="button"
+                onClick={() => { setOpen(!open); setSearch(''); }}
+                className="mt-1 flex w-full items-center justify-between rounded-md border border-gray-300 bg-white px-3 py-2 text-left text-sm shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+            >
+                <span className={selected ? 'text-gray-900' : 'text-gray-400'}>
+                    {selected ? `${selected.group} > ${selected.label}` : 'No auto-fill'}
+                </span>
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className={`h-4 w-4 text-gray-400 transition ${open ? 'rotate-180' : ''}`}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+                </svg>
+            </button>
+
+            {open && (
+                <div className="absolute z-50 mt-1 w-full rounded-md border border-gray-200 bg-white shadow-lg">
+                    <div className="border-b border-gray-100 p-2">
+                        <input
+                            ref={inputRef}
+                            type="text"
+                            value={search}
+                            onChange={(e) => setSearch(e.target.value)}
+                            placeholder="Search customer fields..."
+                            className="w-full rounded border-gray-300 px-2.5 py-1.5 text-sm focus:border-emerald-500 focus:ring-emerald-500"
+                        />
+                    </div>
+                    <div className="max-h-60 overflow-y-auto py-1">
+                        <button
+                            type="button"
+                            onClick={() => { onChange(''); setOpen(false); setSearch(''); }}
+                            className="w-full px-3 py-1.5 text-left text-sm text-gray-400 hover:bg-gray-50"
+                        >
+                            No auto-fill
+                        </button>
+                        {hasResults ? (
+                            Object.entries(filteredGroups).map(([group, opts]) => (
+                                <div key={group}>
+                                    <div className="px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-gray-400">{group}</div>
+                                    {opts.map((opt) => (
+                                        <button
+                                            key={opt.value}
+                                            type="button"
+                                            onClick={() => { onChange(opt.value); setOpen(false); setSearch(''); }}
+                                            className={`w-full px-3 py-1.5 pl-5 text-left text-sm hover:bg-emerald-50 hover:text-emerald-700 ${opt.value === value ? 'bg-emerald-50 font-medium text-emerald-700' : 'text-gray-700'}`}
+                                        >
+                                            {opt.label}
+                                        </button>
+                                    ))}
+                                </div>
+                            ))
+                        ) : (
+                            <div className="px-3 py-2 text-sm text-gray-400">No matching fields</div>
+                        )}
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
