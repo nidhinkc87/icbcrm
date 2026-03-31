@@ -8,6 +8,7 @@ use App\Models\CustomerDocument;
 use App\Models\Service;
 use App\Models\Task;
 use App\Models\ServiceSubmission;
+use App\Models\TaskDelayReason;
 use App\Models\User;
 use App\Notifications\Task\TaskCompleted;
 use App\Notifications\Task\TaskCreated;
@@ -126,6 +127,73 @@ class TaskController extends Controller
             'can_create' => $user->can('assign tasks'),
             'board_tasks' => $boardTasks,
         ]);
+    }
+
+    public function calendar(Request $request): Response
+    {
+        $user = $request->user();
+        abort_unless($user->can('assign tasks') || $user->can('view tasks'), 403);
+
+        $month = (int) $request->query('month', now()->month);
+        $year = (int) $request->query('year', now()->year);
+
+        $data = $this->getCalendarData($user, $month, $year);
+
+        return Inertia::render('Tasks/Calendar', [
+            'tasks_by_date' => $data['tasks_by_date'],
+            'current_month' => $month,
+            'current_year' => $year,
+            'delay_reasons' => TaskDelayReason::REASON_LABELS,
+            'auth_user_id' => $user->id,
+        ]);
+    }
+
+    public function calendarData(Request $request): \Illuminate\Http\JsonResponse
+    {
+        $user = $request->user();
+        abort_unless($user->can('assign tasks') || $user->can('view tasks'), 403);
+
+        $month = (int) $request->query('month', now()->month);
+        $year = (int) $request->query('year', now()->year);
+
+        $data = $this->getCalendarData($user, $month, $year);
+
+        return response()->json($data);
+    }
+
+    private function getCalendarData(User $user, int $month, int $year): array
+    {
+        $firstOfMonth = \Carbon\Carbon::create($year, $month, 1);
+        $startDate = $firstOfMonth->copy()->startOfWeek(\Carbon\Carbon::SUNDAY);
+        $endDate = $firstOfMonth->copy()->endOfMonth()->endOfWeek(\Carbon\Carbon::SATURDAY);
+
+        $tasks = Task::visibleTo($user)
+            ->whereBetween('due_date', [$startDate->toDateString(), $endDate->toDateString()])
+            ->with(['service:id,name', 'customer.user:id,name', 'responsible:id,name', 'delayReasons' => fn ($q) => $q->where('status', 'pending')])
+            ->orderBy('priority', 'desc')
+            ->get();
+
+        $tasksByDate = [];
+        foreach ($tasks as $task) {
+            $dateKey = $task->due_date->format('Y-m-d');
+            $tasksByDate[$dateKey][] = [
+                'id' => $task->id,
+                'service_name' => $task->service?->name ?? 'Deleted Service',
+                'customer_name' => $task->customer?->user?->name ?? 'Deleted Customer',
+                'responsible_name' => $task->responsible?->name ?? 'Deleted User',
+                'responsible_id' => $task->responsible_id,
+                'priority' => $task->priority,
+                'status' => $task->status,
+                'due_date' => $dateKey,
+                'is_overdue' => $task->status !== 'completed' && $task->due_date->isPast(),
+                'has_pending_delay' => $task->delayReasons->isNotEmpty(),
+                'can_work' => $task->canUserWork($user),
+            ];
+        }
+
+        return [
+            'tasks_by_date' => $tasksByDate,
+        ];
     }
 
     public function create(): Response

@@ -96,6 +96,11 @@ class Task extends Model
         return $this->hasOne(ServiceSubmission::class);
     }
 
+    public function delayReasons(): HasMany
+    {
+        return $this->hasMany(TaskDelayReason::class);
+    }
+
     public function canUserWork(User $user): bool
     {
         if ($user->hasRole('admin') || $this->responsible_id === $user->id) {

@@ -12,6 +12,7 @@ use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\Tasks\TaskAttachmentController;
 use App\Http\Controllers\Tasks\TaskCommentController;
 use App\Http\Controllers\Tasks\TaskController;
+use App\Http\Controllers\Tasks\TaskDelayReasonController;
 use App\Http\Controllers\Tasks\TaskQueryController;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
@@ -51,6 +52,8 @@ Route::middleware(['auth', 'verified', 'role:admin'])->prefix('admin')->name('ad
 // Task routes (accessible by auth users — permission gates in controllers)
 Route::middleware(['auth', 'verified'])->prefix('tasks')->name('tasks.')->group(function () {
     Route::get('/', [TaskController::class, 'index'])->name('index');
+    Route::get('/calendar', [TaskController::class, 'calendar'])->name('calendar');
+    Route::get('/calendar/data', [TaskController::class, 'calendarData'])->name('calendar.data');
     Route::get('/create', [TaskController::class, 'create'])->name('create');
     Route::post('/', [TaskController::class, 'store'])->name('store');
     Route::get('/{task}', [TaskController::class, 'show'])->name('show');
@@ -71,6 +74,9 @@ Route::middleware(['auth', 'verified'])->prefix('tasks')->name('tasks.')->group(
 
     Route::post('/{task}/comments', [TaskCommentController::class, 'store'])->name('comments.store');
     Route::delete('/{task}/comments/{comment}', [TaskCommentController::class, 'destroy'])->name('comments.destroy');
+
+    Route::post('/{task}/delay-reasons', [TaskDelayReasonController::class, 'store'])->name('delay-reasons.store');
+    Route::patch('/{task}/delay-reasons/{delayReason}/review', [TaskDelayReasonController::class, 'review'])->name('delay-reasons.review');
 
     Route::post('/{task}/queries', [TaskQueryController::class, 'store'])->name('queries.store');
     Route::get('/{task}/queries/{query}', [TaskQueryController::class, 'show'])->name('queries.show');
