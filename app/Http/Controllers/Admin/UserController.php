@@ -86,15 +86,7 @@ class UserController extends Controller
         }
 
         if ($type === 'partner') {
-            $customers = Customer::with('user:id,name')->get()->map(fn ($c) => [
-                'id' => $c->id,
-                'name' => $c->user?->name ?? '-',
-            ]);
-
-            return Inertia::render('Admin/Users/CreatePartner', [
-                'roles' => $roles,
-                'customers' => $customers,
-            ]);
+            return Inertia::render('Admin/Users/CreatePartner', ['roles' => $roles]);
         }
 
         return Inertia::render('Admin/Users/CreateEmployee', ['roles' => $roles]);
@@ -114,8 +106,24 @@ class UserController extends Controller
         if ($type === 'partner') {
             $rules['phone'] = 'nullable|string|max:20';
             $rules['company'] = 'nullable|string|max:255';
-            $rules['customer_ids'] = 'nullable|array';
-            $rules['customer_ids.*'] = 'integer|exists:customers,id';
+            $rules['legal_type'] = 'nullable|string|max:255';
+            $rules['trade_license_no'] = 'nullable|string|max:255';
+            $rules['issuing_authority'] = 'nullable|string|max:255';
+            $rules['trade_license_file'] = 'nullable|file|mimes:pdf,jpg,jpeg,png|max:10240';
+            $rules['trade_license_issue_date'] = 'nullable|date';
+            $rules['trade_license_expiry_date'] = 'nullable|date';
+            $rules['moa_file'] = 'nullable|file|mimes:pdf,jpg,jpeg,png|max:10240';
+            $rules['moa_issue_date'] = 'nullable|date';
+            $rules['bank_name'] = 'nullable|string|max:255';
+            $rules['bank_branch'] = 'nullable|string|max:255';
+            $rules['account_number'] = 'nullable|string|max:255';
+            $rules['iban'] = 'nullable|string|max:255';
+            $rules['address_line'] = 'nullable|string|max:255';
+            $rules['emirate'] = 'nullable|string|max:255';
+            $rules['city'] = 'nullable|string|max:255';
+            $rules['po_box'] = 'nullable|string|max:50';
+            $rules['contact_person_name'] = 'nullable|string|max:255';
+            $rules['telephone'] = 'nullable|string|max:20';
         }
 
         if ($type === 'employee') {
@@ -248,14 +256,37 @@ class UserController extends Controller
         }
 
         if ($type === 'partner') {
-            $partner = $user->partner()->create([
+            $partnerData = [
                 'phone' => $validated['phone'] ?? null,
                 'company' => $validated['company'] ?? null,
-            ]);
+                'legal_type' => $validated['legal_type'] ?? null,
+                'trade_license_no' => $validated['trade_license_no'] ?? null,
+                'issuing_authority' => $validated['issuing_authority'] ?? null,
+                'trade_license_issue_date' => $validated['trade_license_issue_date'] ?? null,
+                'trade_license_expiry_date' => $validated['trade_license_expiry_date'] ?? null,
+                'moa_issue_date' => $validated['moa_issue_date'] ?? null,
+                'bank_name' => $validated['bank_name'] ?? null,
+                'bank_branch' => $validated['bank_branch'] ?? null,
+                'account_number' => $validated['account_number'] ?? null,
+                'iban' => $validated['iban'] ?? null,
+                'address_line' => $validated['address_line'] ?? null,
+                'city' => $validated['city'] ?? null,
+                'emirate' => $validated['emirate'] ?? null,
+                'country' => 'UAE',
+                'po_box' => $validated['po_box'] ?? null,
+                'contact_person_name' => $validated['contact_person_name'] ?? null,
+                'telephone' => $validated['telephone'] ?? null,
+            ];
 
-            if (! empty($validated['customer_ids'])) {
-                $partner->customers()->sync($validated['customer_ids']);
+            $storagePath = "partner-documents/{$user->id}";
+            if ($request->hasFile('trade_license_file')) {
+                $partnerData['trade_license_file'] = $request->file('trade_license_file')->store($storagePath, 'public');
             }
+            if ($request->hasFile('moa_file')) {
+                $partnerData['moa_file'] = $request->file('moa_file')->store($storagePath, 'public');
+            }
+
+            $user->partner()->create($partnerData);
         }
 
         if ($type === 'customer') {
@@ -309,6 +340,24 @@ class UserController extends Controller
                     'email' => $user->email,
                     'phone' => $partner?->phone,
                     'company' => $partner?->company,
+                    'legal_type' => $partner?->legal_type,
+                    'trade_license_no' => $partner?->trade_license_no,
+                    'issuing_authority' => $partner?->issuing_authority,
+                    'trade_license_file_url' => $partner?->trade_license_file ? Storage::disk('public')->url($partner->trade_license_file) : null,
+                    'trade_license_issue_date' => $partner?->trade_license_issue_date?->format('M d, Y'),
+                    'trade_license_expiry_date' => $partner?->trade_license_expiry_date?->format('M d, Y'),
+                    'moa_file_url' => $partner?->moa_file ? Storage::disk('public')->url($partner->moa_file) : null,
+                    'moa_issue_date' => $partner?->moa_issue_date?->format('M d, Y'),
+                    'bank_name' => $partner?->bank_name,
+                    'bank_branch' => $partner?->bank_branch,
+                    'account_number' => $partner?->account_number,
+                    'iban' => $partner?->iban,
+                    'address_line' => $partner?->address_line,
+                    'city' => $partner?->city,
+                    'emirate' => $partner?->emirate,
+                    'po_box' => $partner?->po_box,
+                    'contact_person_name' => $partner?->contact_person_name,
+                    'telephone' => $partner?->telephone,
                     'customers' => $customers,
                     'created_at' => $user->created_at->format('M d, Y'),
                 ],
@@ -393,6 +442,24 @@ class UserController extends Controller
                     'email' => $user->email,
                     'phone' => $partner?->phone,
                     'company' => $partner?->company,
+                    'legal_type' => $partner?->legal_type,
+                    'trade_license_no' => $partner?->trade_license_no,
+                    'issuing_authority' => $partner?->issuing_authority,
+                    'trade_license_file_url' => $partner?->trade_license_file ? Storage::disk('public')->url($partner->trade_license_file) : null,
+                    'trade_license_issue_date' => $partner?->trade_license_issue_date?->format('Y-m-d'),
+                    'trade_license_expiry_date' => $partner?->trade_license_expiry_date?->format('Y-m-d'),
+                    'moa_file_url' => $partner?->moa_file ? Storage::disk('public')->url($partner->moa_file) : null,
+                    'moa_issue_date' => $partner?->moa_issue_date?->format('Y-m-d'),
+                    'bank_name' => $partner?->bank_name,
+                    'bank_branch' => $partner?->bank_branch,
+                    'account_number' => $partner?->account_number,
+                    'iban' => $partner?->iban,
+                    'address_line' => $partner?->address_line,
+                    'city' => $partner?->city,
+                    'emirate' => $partner?->emirate,
+                    'po_box' => $partner?->po_box,
+                    'contact_person_name' => $partner?->contact_person_name,
+                    'telephone' => $partner?->telephone,
                     'customer_ids' => $partner?->customers()->pluck('customers.id')->toArray() ?? [],
                 ],
             ]);
@@ -458,6 +525,24 @@ class UserController extends Controller
         if ($role === 'partner') {
             $rules['phone'] = 'nullable|string|max:20';
             $rules['company'] = 'nullable|string|max:255';
+            $rules['legal_type'] = 'nullable|string|max:255';
+            $rules['trade_license_no'] = 'nullable|string|max:255';
+            $rules['issuing_authority'] = 'nullable|string|max:255';
+            $rules['trade_license_file'] = 'nullable|file|mimes:pdf,jpg,jpeg,png|max:10240';
+            $rules['trade_license_issue_date'] = 'nullable|date';
+            $rules['trade_license_expiry_date'] = 'nullable|date';
+            $rules['moa_file'] = 'nullable|file|mimes:pdf,jpg,jpeg,png|max:10240';
+            $rules['moa_issue_date'] = 'nullable|date';
+            $rules['bank_name'] = 'nullable|string|max:255';
+            $rules['bank_branch'] = 'nullable|string|max:255';
+            $rules['account_number'] = 'nullable|string|max:255';
+            $rules['iban'] = 'nullable|string|max:255';
+            $rules['address_line'] = 'nullable|string|max:255';
+            $rules['emirate'] = 'nullable|string|max:255';
+            $rules['city'] = 'nullable|string|max:255';
+            $rules['po_box'] = 'nullable|string|max:50';
+            $rules['contact_person_name'] = 'nullable|string|max:255';
+            $rules['telephone'] = 'nullable|string|max:20';
             $rules['customer_ids'] = 'nullable|array';
             $rules['customer_ids.*'] = 'integer|exists:customers,id';
         }
@@ -573,13 +658,36 @@ class UserController extends Controller
         $user->syncRoles(array_unique($newRoles));
 
         if ($role === 'partner') {
-            $partner = $user->partner()->updateOrCreate(
-                ['user_id' => $user->id],
-                [
-                    'phone' => $validated['phone'] ?? null,
-                    'company' => $validated['company'] ?? null,
-                ]
-            );
+            $partnerData = [
+                'phone' => $validated['phone'] ?? null,
+                'company' => $validated['company'] ?? null,
+                'legal_type' => $validated['legal_type'] ?? null,
+                'trade_license_no' => $validated['trade_license_no'] ?? null,
+                'issuing_authority' => $validated['issuing_authority'] ?? null,
+                'trade_license_issue_date' => $validated['trade_license_issue_date'] ?? null,
+                'trade_license_expiry_date' => $validated['trade_license_expiry_date'] ?? null,
+                'moa_issue_date' => $validated['moa_issue_date'] ?? null,
+                'bank_name' => $validated['bank_name'] ?? null,
+                'bank_branch' => $validated['bank_branch'] ?? null,
+                'account_number' => $validated['account_number'] ?? null,
+                'iban' => $validated['iban'] ?? null,
+                'address_line' => $validated['address_line'] ?? null,
+                'city' => $validated['city'] ?? null,
+                'emirate' => $validated['emirate'] ?? null,
+                'po_box' => $validated['po_box'] ?? null,
+                'contact_person_name' => $validated['contact_person_name'] ?? null,
+                'telephone' => $validated['telephone'] ?? null,
+            ];
+
+            $storagePath = "partner-documents/{$user->id}";
+            if ($request->hasFile('trade_license_file')) {
+                $partnerData['trade_license_file'] = $request->file('trade_license_file')->store($storagePath, 'public');
+            }
+            if ($request->hasFile('moa_file')) {
+                $partnerData['moa_file'] = $request->file('moa_file')->store($storagePath, 'public');
+            }
+
+            $partner = $user->partner()->updateOrCreate(['user_id' => $user->id], $partnerData);
             $partner->customers()->sync($validated['customer_ids'] ?? []);
 
             return redirect()->route('admin.users.index', ['role' => 'partner'])
