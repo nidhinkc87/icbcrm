@@ -139,12 +139,18 @@ class TaskController extends Controller
 
         $data = $this->getCalendarData($user, $month, $year);
 
+        $employees = User::role(['employee', 'admin'])
+            ->select('id', 'name')
+            ->orderBy('name')
+            ->get();
+
         return Inertia::render('Tasks/Calendar', [
             'tasks_by_date' => $data['tasks_by_date'],
             'current_month' => $month,
             'current_year' => $year,
             'delay_reasons' => TaskDelayReason::REASON_LABELS,
             'auth_user_id' => $user->id,
+            'employees' => $employees,
         ]);
     }
 

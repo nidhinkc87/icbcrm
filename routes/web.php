@@ -7,6 +7,7 @@ use App\Http\Controllers\Admin\PermissionController;
 use App\Http\Controllers\Admin\RoleController;
 use App\Http\Controllers\Admin\ServiceController;
 use App\Http\Controllers\Admin\UserController;
+use App\Http\Controllers\CalendarEventController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\ProfileController;
@@ -101,6 +102,15 @@ Route::middleware(['auth', 'verified'])->prefix('tasks')->name('tasks.')->group(
     Route::post('/{task}/queries/{query}/respond', [TaskQueryController::class, 'respond'])->name('queries.respond');
     Route::patch('/{task}/queries/{query}/close', [TaskQueryController::class, 'close'])->name('queries.close');
     Route::patch('/{task}/queries/{query}/reopen', [TaskQueryController::class, 'reopen'])->name('queries.reopen');
+});
+
+// Calendar events (onsite work, meetings)
+Route::middleware(['auth', 'verified'])->prefix('calendar-events')->name('calendar-events.')->group(function () {
+    Route::get('/', [CalendarEventController::class, 'index'])->name('index');
+    Route::post('/', [CalendarEventController::class, 'store'])->name('store');
+    Route::put('/{calendarEvent}', [CalendarEventController::class, 'update'])->name('update');
+    Route::delete('/{calendarEvent}', [CalendarEventController::class, 'destroy'])->name('destroy');
+    Route::get('/employees', [CalendarEventController::class, 'employees'])->name('employees');
 });
 
 require __DIR__.'/auth.php';
