@@ -59,6 +59,8 @@ Route::middleware(['auth', 'verified', 'role:admin'])->prefix('admin')->name('ad
         Route::get('employees', [ReportController::class, 'employees'])->name('employees');
         Route::get('employees/pdf', [ReportController::class, 'employeesPdf'])->name('employees.pdf');
         Route::get('employees/excel', [ReportController::class, 'employeesExcel'])->name('employees.excel');
+        Route::get('employees/performance/pdf', [ReportController::class, 'employeesPerformancePdf'])->name('employees.performance.pdf');
+        Route::get('employees/performance/excel', [ReportController::class, 'employeesPerformanceExcel'])->name('employees.performance.excel');
         Route::get('employees/{user}', [ReportController::class, 'employeeShow'])->name('employees.show');
         Route::get('employees/{user}/pdf', [ReportController::class, 'employeeShowPdf'])->name('employees.show.pdf');
         Route::get('employees/{user}/excel', [ReportController::class, 'employeeShowExcel'])->name('employees.show.excel');

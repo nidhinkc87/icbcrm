@@ -73,6 +73,14 @@ export default function Employees({ employees, filters }: Props) {
         window.open(`${route('admin.reports.employees.excel')}?${buildParams()}`, '_blank');
     }
 
+    function downloadPerformancePdf() {
+        window.open(`${route('admin.reports.employees.performance.pdf')}?${buildParams()}`, '_blank');
+    }
+
+    function downloadPerformanceExcel() {
+        window.open(`${route('admin.reports.employees.performance.excel')}?${buildParams()}`, '_blank');
+    }
+
     // Extract unique departments for filter
     const departments = [...new Set(employees.map((e) => e.department).filter((d) => d !== '-'))];
 
@@ -125,6 +133,7 @@ export default function Employees({ employees, filters }: Props) {
                                 Filter
                             </button>
                             <DownloadDropdown onPdf={downloadPdf} onExcel={downloadExcel} />
+                            <DownloadDropdown onPdf={downloadPerformancePdf} onExcel={downloadPerformanceExcel} label="Performance Report" />
                         </div>
                     </div>
 

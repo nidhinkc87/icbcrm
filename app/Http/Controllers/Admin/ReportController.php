@@ -9,6 +9,7 @@ use App\Models\Task;
 use App\Models\TaskAttachment;
 use App\Models\TaskComment;
 use App\Models\User;
+use App\Exports\AllEmployeesPerformanceExport;
 use App\Exports\CustomersExport;
 use App\Exports\EmployeesExport;
 use App\Exports\EmployeeShowExport;
@@ -214,6 +215,131 @@ class ReportController extends Controller
         $employees = $this->getEmployeeMetrics($request)->toArray();
 
         return Excel::download(new EmployeesExport($employees), 'employee-report-' . now()->format('Y-m-d') . '.xlsx');
+    }
+
+    public function employeesPerformancePdf(Request $request)
+    {
+        $employees = $this->getAllEmployeesPerformanceData($request);
+        $filtersMeta = $this->buildFiltersMeta($this->employeeFilters($request));
+
+        $pdf = Pdf::loadView('reports.employees-performance', compact('employees', 'filtersMeta'))
+            ->setPaper('a4', 'landscape');
+
+        return $pdf->download('all-employees-performance-' . now()->format('Y-m-d') . '.pdf');
+    }
+
+    public function employeesPerformanceExcel(Request $request)
+    {
+        $employees = $this->getAllEmployeesPerformanceData($request);
+
+        return Excel::download(new AllEmployeesPerformanceExport($employees), 'all-employees-performance-' . now()->format('Y-m-d') . '.xlsx');
+    }
+
+    private function getAllEmployeesPerformanceData(Request $request): array
+    {
+        $search = $request->query('search');
+        $department = $request->query('department');
+        $period = $request->query('period', '90');
+        $dateFrom = $this->getDateFrom($period);
+
+        $users = User::role('employee')
+            ->with('employee:id,user_id,department,designation,date_of_joining')
+            ->when($search, fn ($q) => $q->where('name', 'like', "%{$search}%")->orWhere('email', 'like', "%{$search}%"))
+            ->when($department, fn ($q) => $q->whereHas('employee', fn ($e) => $e->where('department', $department)))
+            ->get();
+
+        return $users->map(function (User $user) use ($dateFrom) {
+            $baseQuery = Task::where('responsible_id', $user->id)
+                ->when($dateFrom, fn ($q) => $q->where('created_at', '>=', $dateFrom));
+
+            $total = (clone $baseQuery)->count();
+            $completed = (clone $baseQuery)->where('status', 'completed')->count();
+            $onTime = (clone $baseQuery)->where('status', 'completed')
+                ->whereRaw('DATE(updated_at) <= due_date')->count();
+            $avgDays = (clone $baseQuery)->where('status', 'completed')
+                ->selectRaw('AVG(DATEDIFF(updated_at, created_at)) as avg_days')
+                ->value('avg_days');
+            $overdue = Task::where('responsible_id', $user->id)
+                ->where('status', '!=', 'completed')
+                ->where('due_date', '<', Carbon::today())->count();
+
+            $priorityBreakdown = Task::where('responsible_id', $user->id)
+                ->when($dateFrom, fn ($q) => $q->where('created_at', '>=', $dateFrom))
+                ->selectRaw('priority, count(*) as total, SUM(CASE WHEN status = "completed" THEN 1 ELSE 0 END) as completed')
+                ->groupBy('priority')
+                ->get()
+                ->map(fn ($row) => [
+                    'name' => ucfirst($row->priority),
+                    'total' => $row->total,
+                    'completed' => $row->completed,
+                ])->toArray();
+
+            $servicePerformance = Task::where('responsible_id', $user->id)
+                ->when($dateFrom, fn ($q) => $q->where('created_at', '>=', $dateFrom))
+                ->with('service:id,name')
+                ->selectRaw('service_id, count(*) as total, SUM(CASE WHEN status = "completed" THEN 1 ELSE 0 END) as completed')
+                ->groupBy('service_id')
+                ->get()
+                ->map(fn ($row) => [
+                    'name' => $row->service?->name ?? 'Unknown',
+                    'total' => $row->total,
+                    'completed' => $row->completed,
+                ])->toArray();
+
+            $recentTasks = Task::where('responsible_id', $user->id)
+                ->where('status', 'completed')
+                ->with(['service:id,name', 'customer.user:id,name'])
+                ->latest('updated_at')
+                ->limit(15)
+                ->get()
+                ->map(fn (Task $t) => [
+                    'id' => $t->id,
+                    'service_name' => $t->service?->name ?? 'Unknown',
+                    'customer_name' => $t->customer?->user?->name ?? 'Unknown',
+                    'priority' => $t->priority,
+                    'due_date' => $t->due_date->format('M d, Y'),
+                    'completed_at' => $t->updated_at->format('M d, Y'),
+                    'days_taken' => $t->created_at->diffInDays($t->updated_at),
+                    'on_time' => $t->updated_at->toDateString() <= $t->due_date->toDateString(),
+                ])->toArray();
+
+            $collaboratedTasks = DB::table('task_collaborators')
+                ->where('user_id', $user->id)
+                ->when($dateFrom, fn ($q) => $q->where('created_at', '>=', $dateFrom))
+                ->count();
+            $commentsCount = TaskComment::where('user_id', $user->id)
+                ->when($dateFrom, fn ($q) => $q->where('created_at', '>=', $dateFrom))
+                ->count();
+            $attachmentsCount = TaskAttachment::where('uploaded_by', $user->id)
+                ->when($dateFrom, fn ($q) => $q->where('created_at', '>=', $dateFrom))
+                ->count();
+
+            return [
+                'employee' => [
+                    'id' => $user->id,
+                    'name' => $user->name,
+                    'email' => $user->email,
+                    'department' => $user->employee?->department ?? '-',
+                    'designation' => $user->employee?->designation ?? '-',
+                    'date_of_joining' => $user->employee?->date_of_joining?->format('M d, Y'),
+                ],
+                'kpis' => [
+                    'total_tasks' => $total,
+                    'completed' => $completed,
+                    'on_time_rate' => $completed > 0 ? round(($onTime / $completed) * 100) : 0,
+                    'avg_days' => $avgDays ? round($avgDays, 1) : 0,
+                    'overdue' => $overdue,
+                ],
+                'priority_breakdown' => $priorityBreakdown,
+                'service_performance' => $servicePerformance,
+                'recent_tasks' => $recentTasks,
+                'collaboration' => [
+                    'tasks_collaborated' => $collaboratedTasks,
+                    'comments_posted' => $commentsCount,
+                    'attachments_uploaded' => $attachmentsCount,
+                ],
+            ];
+        })->toArray();
     }
 
     private function getEmployeeMetrics(Request $request)
