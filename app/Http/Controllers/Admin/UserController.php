@@ -142,9 +142,10 @@ class UserController extends Controller
             $rules['trade_license_no'] = 'required|string|max:255';
             $rules['issuing_authority'] = 'required|string|max:255';
             $rules['trade_license_file'] = 'required|file|mimes:pdf,jpg,jpeg,png|max:10240';
-            $rules['moa_file'] = 'required|file|mimes:pdf,jpg,jpeg,png|max:10240';
+            $rules['moa_file'] = 'nullable|file|mimes:pdf,jpg,jpeg,png|max:10240';
             $rules['trade_license_issue_date'] = 'required|date';
             $rules['trade_license_expiry_date'] = 'required|date|after:trade_license_issue_date';
+            $rules['moa_issue_date'] = 'nullable|date';
 
             // Partners (repeatable)
             $rules['partners'] = 'required|array|min:1';
@@ -157,10 +158,10 @@ class UserController extends Controller
             $rules['partners.*.passport_expiry'] = 'required|date';
 
             // Bank details
-            $rules['bank_name'] = 'required|string|max:255';
+            $rules['bank_name'] = 'nullable|string|max:255';
             $rules['bank_branch'] = 'nullable|string|max:255';
             $rules['account_number'] = 'nullable|string|max:255';
-            $rules['iban'] = 'required|string|max:255';
+            $rules['iban'] = 'nullable|string|max:255';
 
             // Address
             $rules['address_line'] = 'required|string|max:255';
@@ -169,7 +170,7 @@ class UserController extends Controller
             $rules['po_box'] = 'nullable|string|max:50';
 
             // Contact
-            $rules['contact_person_name'] = 'required|string|max:255';
+            $rules['contact_person_name'] = 'nullable|string|max:255';
             $rules['phone'] = 'required|string|max:20';
             $rules['telephone'] = 'nullable|string|max:20';
 
@@ -428,6 +429,7 @@ class UserController extends Controller
             $rules['moa_file'] = 'nullable|file|mimes:pdf,jpg,jpeg,png|max:10240';
             $rules['trade_license_issue_date'] = 'required|date';
             $rules['trade_license_expiry_date'] = 'required|date|after:trade_license_issue_date';
+            $rules['moa_issue_date'] = 'nullable|date';
 
             // Partners
             $rules['partners'] = 'required|array|min:1';
@@ -441,10 +443,10 @@ class UserController extends Controller
             $rules['partners.*.passport_expiry'] = 'required|date';
 
             // Bank
-            $rules['bank_name'] = 'required|string|max:255';
+            $rules['bank_name'] = 'nullable|string|max:255';
             $rules['bank_branch'] = 'nullable|string|max:255';
             $rules['account_number'] = 'nullable|string|max:255';
-            $rules['iban'] = 'required|string|max:255';
+            $rules['iban'] = 'nullable|string|max:255';
 
             // Address
             $rules['address_line'] = 'required|string|max:255';
@@ -453,7 +455,7 @@ class UserController extends Controller
             $rules['po_box'] = 'nullable|string|max:50';
 
             // Contact
-            $rules['contact_person_name'] = 'required|string|max:255';
+            $rules['contact_person_name'] = 'nullable|string|max:255';
             $rules['phone'] = 'required|string|max:20';
             $rules['telephone'] = 'nullable|string|max:20';
 
@@ -635,6 +637,7 @@ class UserController extends Controller
             'moa_file_url' => $fileUrl($moaDoc),
             'trade_license_issue_date' => $tlDoc?->issue_date?->format('Y-m-d'),
             'trade_license_expiry_date' => $tlDoc?->expiry_date?->format('Y-m-d'),
+            'moa_issue_date' => $moaDoc?->issue_date?->format('Y-m-d'),
             'partners' => ($c?->partners ?? collect())->map(function ($partner) use ($docs, $fileUrl) {
                 $eidDoc = $docs->filter(fn ($d) => $d->documentType?->slug === 'partner_emirates_id' && $d->partner_id === $partner->id)->first();
                 $passDoc = $docs->filter(fn ($d) => $d->documentType?->slug === 'partner_passport' && $d->partner_id === $partner->id)->first();
@@ -687,8 +690,8 @@ class UserController extends Controller
 
         // Update MOA
         $this->upsertCompanyDocument($customer, $docTypes['moa'], $request, 'moa_file', [
-            'issue_date' => $validated['trade_license_issue_date'],
-            'expiry_date' => $validated['trade_license_expiry_date'],
+            'issue_date' => $validated['moa_issue_date'] ?? null,
+            'expiry_date' => null,
         ], $storagePath);
 
         // Remove deleted partners
@@ -866,8 +869,7 @@ class UserController extends Controller
                 'document_type_id' => $docTypes['moa'],
                 'file_path' => $file->store($storagePath, 'public'),
                 'original_name' => $file->getClientOriginalName(),
-                'issue_date' => $validated['trade_license_issue_date'],
-                'expiry_date' => $validated['trade_license_expiry_date'],
+                'issue_date' => $validated['moa_issue_date'] ?? null,
             ]);
         }
 

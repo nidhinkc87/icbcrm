@@ -42,6 +42,7 @@ interface UserData {
     moa_file_url: string | null;
     trade_license_issue_date: string | null;
     trade_license_expiry_date: string | null;
+    moa_issue_date: string | null;
     bank_name: string | null;
     bank_branch: string | null;
     account_number: string | null;
@@ -171,8 +172,9 @@ export default function ShowCustomer({ user }: Props) {
                                 <InfoItem label="Issuing Authority" value={user.issuing_authority} />
                                 <DocLink label="Trade License Copy" url={user.trade_license_file_url} />
                                 <DocLink label="MOA Copy" url={user.moa_file_url} />
-                                <ExpiryDate label="Issue Date" date={user.trade_license_issue_date} />
-                                <ExpiryDate label="Expiry Date" date={user.trade_license_expiry_date} />
+                                <ExpiryDate label="Trade License Issue Date" date={user.trade_license_issue_date} />
+                                <ExpiryDate label="Trade License Expiry Date" date={user.trade_license_expiry_date} />
+                                <ExpiryDate label="MOA Issue Date" date={user.moa_issue_date} />
                                 <div className="py-3 sm:grid sm:grid-cols-3 sm:gap-4">
                                     <dt className="text-sm font-medium text-gray-500">Role</dt>
                                     <dd className="mt-1 sm:col-span-2 sm:mt-0">

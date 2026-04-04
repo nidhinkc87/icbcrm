@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Admin\EmployeePerformanceController;
 use App\Http\Controllers\Admin\ExpiryRuleController;
+use App\Http\Controllers\Admin\ReportController;
 use App\Http\Controllers\Admin\PermissionController;
 use App\Http\Controllers\Admin\RoleController;
 use App\Http\Controllers\Admin\ServiceController;
@@ -47,6 +48,21 @@ Route::middleware(['auth', 'verified', 'role:admin'])->prefix('admin')->name('ad
     Route::get('performance', [EmployeePerformanceController::class, 'index'])->name('performance.index');
     Route::get('performance/{user}', [EmployeePerformanceController::class, 'show'])->name('performance.show');
     Route::resource('expiry-rules', ExpiryRuleController::class)->except(['show']);
+
+    Route::prefix('reports')->name('reports.')->group(function () {
+        Route::get('customers', [ReportController::class, 'customers'])->name('customers');
+        Route::get('customers/pdf', [ReportController::class, 'customersPdf'])->name('customers.pdf');
+        Route::get('customers/excel', [ReportController::class, 'customersExcel'])->name('customers.excel');
+        Route::get('partners', [ReportController::class, 'partners'])->name('partners');
+        Route::get('partners/pdf', [ReportController::class, 'partnersPdf'])->name('partners.pdf');
+        Route::get('partners/excel', [ReportController::class, 'partnersExcel'])->name('partners.excel');
+        Route::get('employees', [ReportController::class, 'employees'])->name('employees');
+        Route::get('employees/pdf', [ReportController::class, 'employeesPdf'])->name('employees.pdf');
+        Route::get('employees/excel', [ReportController::class, 'employeesExcel'])->name('employees.excel');
+        Route::get('employees/{user}', [ReportController::class, 'employeeShow'])->name('employees.show');
+        Route::get('employees/{user}/pdf', [ReportController::class, 'employeeShowPdf'])->name('employees.show.pdf');
+        Route::get('employees/{user}/excel', [ReportController::class, 'employeeShowExcel'])->name('employees.show.excel');
+    });
 });
 
 // Task routes (accessible by auth users — permission gates in controllers)

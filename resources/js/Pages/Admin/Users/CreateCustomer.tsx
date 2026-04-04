@@ -105,6 +105,7 @@ export default function CreateCustomer({ roles }: Props) {
         issuing_authority: '',
         trade_license_issue_date: '',
         trade_license_expiry_date: '',
+        moa_issue_date: '',
         // Section 3: Bank Details
         bank_name: '',
         bank_branch: '',
@@ -188,6 +189,7 @@ export default function CreateCustomer({ roles }: Props) {
         formData.append('issuing_authority', data.issuing_authority);
         formData.append('trade_license_issue_date', data.trade_license_issue_date);
         formData.append('trade_license_expiry_date', data.trade_license_expiry_date);
+        if (data.moa_issue_date) formData.append('moa_issue_date', data.moa_issue_date);
         formData.append('phone', data.phone);
         formData.append('address_line', data.address_line);
         formData.append('city', data.city);
@@ -340,6 +342,11 @@ export default function CreateCustomer({ roles }: Props) {
                                     <InputError message={errors.issuing_authority} className="mt-2" />
                                 </div>
 
+                            </div>
+
+                            {/* Trade License */}
+                            <h4 className="mt-6 text-sm font-semibold text-gray-700">Trade License</h4>
+                            <div className="mt-2 grid grid-cols-1 gap-4 sm:grid-cols-3">
                                 <div>
                                     <InputLabel htmlFor="trade_license_file" value="Trade License Copy *" />
                                     <input
@@ -357,23 +364,7 @@ export default function CreateCustomer({ roles }: Props) {
                                 </div>
 
                                 <div>
-                                    <InputLabel htmlFor="moa_file" value="MOA Copy *" />
-                                    <input
-                                        id="moa_file"
-                                        type="file"
-                                        accept=".pdf,.jpg,.jpeg,.png"
-                                        className={fileInputClasses}
-                                        onChange={(e) => setMoaFile(e.target.files?.[0] ?? null)}
-                                        required
-                                    />
-                                    {moaFile && (
-                                        <p className="mt-1 text-xs text-gray-500">{moaFile.name}</p>
-                                    )}
-                                    <InputError message={errors.moa_file} className="mt-2" />
-                                </div>
-
-                                <div>
-                                    <InputLabel htmlFor="trade_license_issue_date" value="Trade License & MOA Issue Date *" />
+                                    <InputLabel htmlFor="trade_license_issue_date" value="Issue Date *" />
                                     <TextInput
                                         id="trade_license_issue_date"
                                         type="date"
@@ -386,7 +377,7 @@ export default function CreateCustomer({ roles }: Props) {
                                 </div>
 
                                 <div>
-                                    <InputLabel htmlFor="trade_license_expiry_date" value="Trade License & MOA Expiry Date *" />
+                                    <InputLabel htmlFor="trade_license_expiry_date" value="Expiry Date *" />
                                     <TextInput
                                         id="trade_license_expiry_date"
                                         type="date"
@@ -396,6 +387,37 @@ export default function CreateCustomer({ roles }: Props) {
                                         required
                                     />
                                     <InputError message={errors.trade_license_expiry_date} className="mt-2" />
+                                </div>
+                            </div>
+
+                            {/* MOA */}
+                            <h4 className="mt-6 text-sm font-semibold text-gray-700">MOA</h4>
+                            <div className="mt-2 grid grid-cols-1 gap-4 sm:grid-cols-3">
+                                <div>
+                                    <InputLabel htmlFor="moa_file" value="MOA Copy" />
+                                    <input
+                                        id="moa_file"
+                                        type="file"
+                                        accept=".pdf,.jpg,.jpeg,.png"
+                                        className={fileInputClasses}
+                                        onChange={(e) => setMoaFile(e.target.files?.[0] ?? null)}
+                                    />
+                                    {moaFile && (
+                                        <p className="mt-1 text-xs text-gray-500">{moaFile.name}</p>
+                                    )}
+                                    <InputError message={errors.moa_file} className="mt-2" />
+                                </div>
+
+                                <div>
+                                    <InputLabel htmlFor="moa_issue_date" value="Issue Date" />
+                                    <TextInput
+                                        id="moa_issue_date"
+                                        type="date"
+                                        value={data.moa_issue_date}
+                                        className="mt-1 block w-full"
+                                        onChange={(e) => setField('moa_issue_date', e.target.value)}
+                                    />
+                                    <InputError message={errors.moa_issue_date} className="mt-2" />
                                 </div>
                             </div>
 
@@ -534,13 +556,12 @@ export default function CreateCustomer({ roles }: Props) {
                             </h3>
                             <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
                                 <div>
-                                    <InputLabel htmlFor="bank_name" value="Name of the Bank *" />
+                                    <InputLabel htmlFor="bank_name" value="Name of the Bank" />
                                     <TextInput
                                         id="bank_name"
                                         value={data.bank_name}
                                         className="mt-1 block w-full"
                                         onChange={(e) => setField('bank_name', e.target.value)}
-                                        required
                                     />
                                     <InputError message={errors.bank_name} className="mt-2" />
                                 </div>
@@ -568,14 +589,13 @@ export default function CreateCustomer({ roles }: Props) {
                                 </div>
 
                                 <div>
-                                    <InputLabel htmlFor="iban" value="IBAN Number *" />
+                                    <InputLabel htmlFor="iban" value="IBAN Number" />
                                     <TextInput
                                         id="iban"
                                         value={data.iban}
                                         className="mt-1 block w-full"
                                         placeholder="AE00 0000 0000 0000 0000 000"
                                         onChange={(e) => setField('iban', e.target.value)}
-                                        required
                                     />
                                     <InputError message={errors.iban} className="mt-2" />
                                 </div>
@@ -639,19 +659,18 @@ export default function CreateCustomer({ roles }: Props) {
                                 </div>
                             </div>
 
-                            {/* ── Section 5: Contact Details ── */}
+                            {/* ── Section 5: Name of the Authorized Person ── */}
                             <h3 className="mt-8 border-t border-gray-200 pt-6 text-lg font-medium text-gray-900">
-                                Contact Details
+                                Name of the Authorized Person
                             </h3>
                             <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
                                 <div>
-                                    <InputLabel htmlFor="contact_person_name" value="Name of Contact Person *" />
+                                    <InputLabel htmlFor="contact_person_name" value="Name of the Authorized Person" />
                                     <TextInput
                                         id="contact_person_name"
                                         value={data.contact_person_name}
                                         className="mt-1 block w-full"
                                         onChange={(e) => setField('contact_person_name', e.target.value)}
-                                        required
                                     />
                                     <InputError message={errors.contact_person_name} className="mt-2" />
                                 </div>
