@@ -2,7 +2,7 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import Modal from '@/Components/Modal';
 import { Head, Link, router, usePage } from '@inertiajs/react';
 import { PageProps } from '@/types';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 type TaskPriority = 'low' | 'medium' | 'high' | 'urgent';
 type TaskStatus = 'pending' | 'in_progress' | 'completed';
@@ -215,6 +215,17 @@ export default function Calendar({ tasks_by_date, current_month, current_year, d
     const [eventForm, setEventForm] = useState({ title: '', description: '', type: 'meeting' as EventType, location: '', date: '', start_time: '', end_time: '', all_day: false, participant_ids: [] as number[] });
     const [eventErrors, setEventErrors] = useState<Record<string, string>>({});
     const [eventSubmitting, setEventSubmitting] = useState(false);
+    const [participantSearch, setParticipantSearch] = useState('');
+    const [participantDropdownOpen, setParticipantDropdownOpen] = useState(false);
+    const participantRef = useRef<HTMLDivElement>(null);
+    useEffect(() => {
+        if (!participantDropdownOpen) return;
+        const handler = (e: MouseEvent) => {
+            if (participantRef.current && !participantRef.current.contains(e.target as Node)) setParticipantDropdownOpen(false);
+        };
+        document.addEventListener('mousedown', handler);
+        return () => document.removeEventListener('mousedown', handler);
+    }, [participantDropdownOpen]);
 
     // Task detail popover
     const [hoveredTask, setHoveredTask] = useState<CalendarTask | null>(null);
@@ -258,6 +269,8 @@ export default function Calendar({ tasks_by_date, current_month, current_year, d
         setEditingEvent(null);
         setEventForm({ title: '', description: '', type: 'meeting', location: '', date, start_time: '', end_time: '', all_day: false, participant_ids: [] });
         setEventErrors({});
+        setParticipantSearch('');
+        setParticipantDropdownOpen(false);
         setShowEventModal(true);
     };
 
@@ -275,6 +288,8 @@ export default function Calendar({ tasks_by_date, current_month, current_year, d
             participant_ids: event.participants.map((p) => p.id),
         });
         setEventErrors({});
+        setParticipantSearch('');
+        setParticipantDropdownOpen(false);
         setShowEventModal(true);
     };
 
@@ -1033,22 +1048,65 @@ export default function Calendar({ tasks_by_date, current_month, current_year, d
                                 rows={2} className="block w-full rounded-lg border-gray-300 text-sm shadow-sm focus:border-emerald-500 focus:ring-emerald-500" placeholder="Notes about this event..." />
                         </div>
 
-                        {/* Participants */}
-                        <div>
+                        {/* Participants - searchable multi-select */}
+                        <div ref={participantRef}>
                             <label className="block text-sm font-medium text-gray-700 mb-1">Participants</label>
-                            <div className="max-h-40 overflow-y-auto rounded-lg border border-gray-200">
-                                {employees.map((emp) => (
-                                    <label key={emp.id} className="flex cursor-pointer items-center gap-3 border-b border-gray-100 px-3 py-2 hover:bg-gray-50 last:border-0">
-                                        <input type="checkbox" checked={eventForm.participant_ids.includes(emp.id)}
-                                            onChange={() => toggleParticipant(emp.id)}
-                                            className="rounded border-gray-300 text-emerald-600 focus:ring-emerald-500" />
-                                        <span className="text-sm text-gray-700">{emp.name}</span>
-                                    </label>
-                                ))}
+                            {/* Selected tags */}
+                            <div className="relative">
+                                <div
+                                    className="flex min-h-[38px] flex-wrap items-center gap-1 rounded-lg border border-gray-300 bg-white px-2 py-1.5 cursor-text focus-within:border-emerald-500 focus-within:ring-1 focus-within:ring-emerald-500"
+                                    onClick={() => setParticipantDropdownOpen(true)}
+                                >
+                                    {eventForm.participant_ids.map((pid) => {
+                                        const emp = employees.find((e) => e.id === pid);
+                                        if (!emp) return null;
+                                        return (
+                                            <span key={pid} className="inline-flex items-center gap-1 rounded-md bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700">
+                                                {emp.name}
+                                                <button type="button" onClick={(e) => { e.stopPropagation(); toggleParticipant(pid); }} className="text-emerald-400 hover:text-emerald-700">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="h-3 w-3">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                                                    </svg>
+                                                </button>
+                                            </span>
+                                        );
+                                    })}
+                                    <input
+                                        type="text"
+                                        value={participantSearch}
+                                        onChange={(e) => { setParticipantSearch(e.target.value); setParticipantDropdownOpen(true); }}
+                                        onFocus={() => setParticipantDropdownOpen(true)}
+                                        placeholder={eventForm.participant_ids.length === 0 ? 'Search employees...' : ''}
+                                        className="min-w-[80px] flex-1 border-0 bg-transparent p-0 text-sm text-gray-700 placeholder-gray-400 focus:ring-0"
+                                    />
+                                </div>
+                                {/* Dropdown */}
+                                {participantDropdownOpen && (
+                                    <div className="absolute z-20 mt-1 w-full rounded-lg border border-gray-200 bg-white shadow-lg">
+                                        <div className="max-h-36 overflow-y-auto">
+                                            {employees
+                                                .filter((emp) => emp.name.toLowerCase().includes(participantSearch.toLowerCase()))
+                                                .filter((emp) => !eventForm.participant_ids.includes(emp.id))
+                                                .map((emp) => (
+                                                    <button
+                                                        key={emp.id}
+                                                        type="button"
+                                                        onClick={() => { toggleParticipant(emp.id); setParticipantSearch(''); }}
+                                                        className="flex w-full items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-emerald-50 hover:text-emerald-700"
+                                                    >
+                                                        <div className="flex h-5 w-5 items-center justify-center rounded-full bg-gray-100 text-[9px] font-bold text-gray-500">
+                                                            {emp.name.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2)}
+                                                        </div>
+                                                        {emp.name}
+                                                    </button>
+                                                ))}
+                                            {employees.filter((emp) => emp.name.toLowerCase().includes(participantSearch.toLowerCase()) && !eventForm.participant_ids.includes(emp.id)).length === 0 && (
+                                                <p className="px-3 py-2 text-xs text-gray-400">No matches</p>
+                                            )}
+                                        </div>
+                                    </div>
+                                )}
                             </div>
-                            {eventForm.participant_ids.length > 0 && (
-                                <p className="mt-1 text-xs text-gray-500">{eventForm.participant_ids.length} participant(s) selected</p>
-                            )}
                         </div>
                     </div>
 
