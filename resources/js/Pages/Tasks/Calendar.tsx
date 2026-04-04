@@ -642,10 +642,7 @@ export default function Calendar({ tasks_by_date, current_month, current_year, d
                                                 className={`min-h-[120px] border-b border-r border-gray-100 p-1.5 transition-colors ${
                                                     !day.isCurrentMonth ? 'bg-gray-50/50' : 'bg-white'
                                                 } ${day.isToday ? 'bg-emerald-50/40' : ''} hover:bg-gray-50/80 cursor-pointer group/cell`}
-                                                onClick={() => {
-                                                    setSelectedDate(day.date);
-                                                    setViewMode('day');
-                                                }}
+                                                onClick={() => openCreateEvent(day.date)}
                                             >
                                                 {/* Date number + add event button */}
                                                 <div className="flex items-center justify-between mb-1">
@@ -661,15 +658,6 @@ export default function Calendar({ tasks_by_date, current_month, current_year, d
                                                         {day.day}
                                                     </span>
                                                     <div className="flex items-center gap-1">
-                                                        <button
-                                                            onClick={(e) => { e.stopPropagation(); openCreateEvent(day.date); }}
-                                                            className="hidden group-hover/cell:inline-flex h-5 w-5 items-center justify-center rounded-full text-gray-400 hover:bg-emerald-100 hover:text-emerald-600 transition-colors"
-                                                            title="Add event"
-                                                        >
-                                                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="h-3 w-3">
-                                                                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-                                                            </svg>
-                                                        </button>
                                                         {allItems.length > 0 && (
                                                             <span className="text-[10px] font-medium text-gray-400">{allItems.length}</span>
                                                         )}
