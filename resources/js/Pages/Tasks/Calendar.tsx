@@ -958,7 +958,7 @@ export default function Calendar({ tasks_by_date, current_month, current_year, d
                 </div>
             </Modal>
             {/* Event Create/Edit Modal */}
-            <Modal show={showEventModal} onClose={() => setShowEventModal(false)} maxWidth="lg">
+            <Modal show={showEventModal} onClose={() => setShowEventModal(false)} maxWidth="3xl">
                 <div className="p-6">
                     <div className="flex items-center gap-3 mb-5">
                         <div className="flex h-10 w-10 items-center justify-center rounded-full bg-purple-100">
@@ -969,69 +969,68 @@ export default function Calendar({ tasks_by_date, current_month, current_year, d
                         <h3 className="text-lg font-semibold text-gray-900">{editingEvent ? 'Edit Event' : 'New Event'}</h3>
                     </div>
 
-                    <div className="space-y-4">
-                        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                            <div className="sm:col-span-2">
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Title *</label>
-                                <input type="text" value={eventForm.title} onChange={(e) => setEventForm({ ...eventForm, title: e.target.value })}
-                                    className="block w-full rounded-lg border-gray-300 text-sm shadow-sm focus:border-emerald-500 focus:ring-emerald-500" placeholder="e.g. Client site visit, Team standup..." />
-                                {eventErrors.title && <p className="mt-1 text-sm text-red-600">{eventErrors.title}</p>}
-                            </div>
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                        <div className="sm:col-span-2">
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Title *</label>
+                            <input type="text" value={eventForm.title} onChange={(e) => setEventForm({ ...eventForm, title: e.target.value })}
+                                className="block w-full rounded-lg border-gray-300 text-sm shadow-sm focus:border-emerald-500 focus:ring-emerald-500" placeholder="e.g. Client site visit, Team standup..." />
+                            {eventErrors.title && <p className="mt-1 text-sm text-red-600">{eventErrors.title}</p>}
+                        </div>
 
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Type *</label>
-                                <select value={eventForm.type} onChange={(e) => setEventForm({ ...eventForm, type: e.target.value as EventType })}
-                                    className="block w-full rounded-lg border-gray-300 text-sm shadow-sm focus:border-emerald-500 focus:ring-emerald-500">
-                                    <option value="onsite">Onsite Work</option>
-                                    <option value="meeting">Meeting</option>
-                                    <option value="other">Other</option>
-                                </select>
-                                {eventErrors.type && <p className="mt-1 text-sm text-red-600">{eventErrors.type}</p>}
-                            </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Type *</label>
+                            <select value={eventForm.type} onChange={(e) => setEventForm({ ...eventForm, type: e.target.value as EventType })}
+                                className="block w-full rounded-lg border-gray-300 text-sm shadow-sm focus:border-emerald-500 focus:ring-emerald-500">
+                                <option value="onsite">Onsite Work</option>
+                                <option value="meeting">Meeting</option>
+                                <option value="other">Other</option>
+                            </select>
+                            {eventErrors.type && <p className="mt-1 text-sm text-red-600">{eventErrors.type}</p>}
+                        </div>
 
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Date *</label>
-                                <input type="date" value={eventForm.date} onChange={(e) => setEventForm({ ...eventForm, date: e.target.value })}
-                                    className="block w-full rounded-lg border-gray-300 text-sm shadow-sm focus:border-emerald-500 focus:ring-emerald-500" />
-                                {eventErrors.date && <p className="mt-1 text-sm text-red-600">{eventErrors.date}</p>}
-                            </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Date *</label>
+                            <input type="date" value={eventForm.date} onChange={(e) => setEventForm({ ...eventForm, date: e.target.value })}
+                                className="block w-full rounded-lg border-gray-300 text-sm shadow-sm focus:border-emerald-500 focus:ring-emerald-500" />
+                            {eventErrors.date && <p className="mt-1 text-sm text-red-600">{eventErrors.date}</p>}
+                        </div>
 
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Location</label>
-                                <input type="text" value={eventForm.location} onChange={(e) => setEventForm({ ...eventForm, location: e.target.value })}
-                                    className="block w-full rounded-lg border-gray-300 text-sm shadow-sm focus:border-emerald-500 focus:ring-emerald-500" placeholder="Office, client site..." />
-                            </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Location</label>
+                            <input type="text" value={eventForm.location} onChange={(e) => setEventForm({ ...eventForm, location: e.target.value })}
+                                className="block w-full rounded-lg border-gray-300 text-sm shadow-sm focus:border-emerald-500 focus:ring-emerald-500" placeholder="Office, client site..." />
+                        </div>
 
-                            <div>
-                                <label className="flex items-center gap-2 mt-6">
-                                    <input type="checkbox" checked={eventForm.all_day} onChange={(e) => setEventForm({ ...eventForm, all_day: e.target.checked, start_time: '', end_time: '' })}
-                                        className="rounded border-gray-300 text-emerald-600 focus:ring-emerald-500" />
-                                    <span className="text-sm text-gray-700">All day</span>
-                                </label>
-                            </div>
+                        <div>
+                            <label className="flex items-center gap-2 mt-6">
+                                <input type="checkbox" checked={eventForm.all_day} onChange={(e) => setEventForm({ ...eventForm, all_day: e.target.checked, start_time: '', end_time: '' })}
+                                    className="rounded border-gray-300 text-emerald-600 focus:ring-emerald-500" />
+                                <span className="text-sm text-gray-700">All day</span>
+                            </label>
+                        </div>
 
-                            {!eventForm.all_day && (
-                                <>
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1">Start Time</label>
-                                        <input type="time" value={eventForm.start_time} onChange={(e) => setEventForm({ ...eventForm, start_time: e.target.value })}
-                                            className="block w-full rounded-lg border-gray-300 text-sm shadow-sm focus:border-emerald-500 focus:ring-emerald-500" />
-                                        {eventErrors.start_time && <p className="mt-1 text-sm text-red-600">{eventErrors.start_time}</p>}
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1">End Time</label>
-                                        <input type="time" value={eventForm.end_time} onChange={(e) => setEventForm({ ...eventForm, end_time: e.target.value })}
-                                            className="block w-full rounded-lg border-gray-300 text-sm shadow-sm focus:border-emerald-500 focus:ring-emerald-500" />
-                                        {eventErrors.end_time && <p className="mt-1 text-sm text-red-600">{eventErrors.end_time}</p>}
-                                    </div>
-                                </>
-                            )}
+                        {!eventForm.all_day && (
+                            <>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Start Time</label>
+                                    <input type="time" value={eventForm.start_time} onChange={(e) => setEventForm({ ...eventForm, start_time: e.target.value })}
+                                        className="block w-full rounded-lg border-gray-300 text-sm shadow-sm focus:border-emerald-500 focus:ring-emerald-500" />
+                                    {eventErrors.start_time && <p className="mt-1 text-sm text-red-600">{eventErrors.start_time}</p>}
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">End Time</label>
+                                    <input type="time" value={eventForm.end_time} onChange={(e) => setEventForm({ ...eventForm, end_time: e.target.value })}
+                                        className="block w-full rounded-lg border-gray-300 text-sm shadow-sm focus:border-emerald-500 focus:ring-emerald-500" />
+                                    {eventErrors.end_time && <p className="mt-1 text-sm text-red-600">{eventErrors.end_time}</p>}
+                                </div>
+                                <div />
+                            </>
+                        )}
 
-                            <div className="sm:col-span-2">
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
-                                <textarea value={eventForm.description} onChange={(e) => setEventForm({ ...eventForm, description: e.target.value })}
-                                    rows={2} className="block w-full rounded-lg border-gray-300 text-sm shadow-sm focus:border-emerald-500 focus:ring-emerald-500" placeholder="Notes about this event..." />
-                            </div>
+                        <div className="sm:col-span-2">
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                            <textarea value={eventForm.description} onChange={(e) => setEventForm({ ...eventForm, description: e.target.value })}
+                                rows={2} className="block w-full rounded-lg border-gray-300 text-sm shadow-sm focus:border-emerald-500 focus:ring-emerald-500" placeholder="Notes about this event..." />
                         </div>
 
                         {/* Participants */}
