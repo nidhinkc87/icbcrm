@@ -985,7 +985,7 @@ export default function Calendar({ tasks_by_date, current_month, current_year, d
                     </div>
 
                     <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-                        <div className="sm:col-span-2">
+                        <div className="sm:col-span-3">
                             <label className="block text-sm font-medium text-gray-700 mb-1">Title *</label>
                             <input type="text" value={eventForm.title} onChange={(e) => setEventForm({ ...eventForm, title: e.target.value })}
                                 className="block w-full rounded-lg border-gray-300 text-sm shadow-sm focus:border-emerald-500 focus:ring-emerald-500" placeholder="e.g. Client site visit, Team standup..." />
@@ -1003,7 +1003,7 @@ export default function Calendar({ tasks_by_date, current_month, current_year, d
                             {eventErrors.type && <p className="mt-1 text-sm text-red-600">{eventErrors.type}</p>}
                         </div>
 
-                        <div className="sm:col-span-3">
+                        <div className="sm:col-span-2">
                             <label className="block text-sm font-medium text-gray-700 mb-1">Location</label>
                             <input type="text" value={eventForm.location} onChange={(e) => setEventForm({ ...eventForm, location: e.target.value })}
                                 className="block w-full rounded-lg border-gray-300 text-sm shadow-sm focus:border-emerald-500 focus:ring-emerald-500" placeholder="Office, client site..." />
