@@ -993,6 +993,13 @@ export default function Calendar({ tasks_by_date, current_month, current_year, d
                         </div>
 
                         <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Date *</label>
+                            <input type="date" value={eventForm.date} onChange={(e) => setEventForm({ ...eventForm, date: e.target.value })}
+                                className="block w-full rounded-lg border-gray-300 text-sm shadow-sm focus:border-emerald-500 focus:ring-emerald-500" />
+                            {eventErrors.date && <p className="mt-1 text-sm text-red-600">{eventErrors.date}</p>}
+                        </div>
+
+                        <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">Type *</label>
                             <select value={eventForm.type} onChange={(e) => setEventForm({ ...eventForm, type: e.target.value as EventType })}
                                 className="block w-full rounded-lg border-gray-300 text-sm shadow-sm focus:border-emerald-500 focus:ring-emerald-500">
@@ -1001,13 +1008,6 @@ export default function Calendar({ tasks_by_date, current_month, current_year, d
                                 <option value="other">Other</option>
                             </select>
                             {eventErrors.type && <p className="mt-1 text-sm text-red-600">{eventErrors.type}</p>}
-                        </div>
-
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Date *</label>
-                            <input type="date" value={eventForm.date} onChange={(e) => setEventForm({ ...eventForm, date: e.target.value })}
-                                className="block w-full rounded-lg border-gray-300 text-sm shadow-sm focus:border-emerald-500 focus:ring-emerald-500" />
-                            {eventErrors.date && <p className="mt-1 text-sm text-red-600">{eventErrors.date}</p>}
                         </div>
 
                         <div>
