@@ -25,6 +25,7 @@ class DashboardController extends Controller
         $data = match ($role) {
             'admin' => $this->adminDashboard($user),
             'employee' => $this->employeeDashboard($user),
+            'partner' => $this->partnerDashboard($user),
             default => $this->customerDashboard($user),
         };
 
@@ -400,6 +401,72 @@ class DashboardController extends Controller
             'kpis' => $kpis,
             'charts' => ['status_distribution' => $statusDistribution],
             'service_progress' => $serviceProgress,
+            'recent_activity' => $recentActivity,
+            'pending_queries' => $this->pendingQueries($user),
+        ];
+    }
+
+    private function partnerDashboard(User $user): array
+    {
+        $partner = $user->partner;
+
+        if (! $partner) {
+            return [
+                'kpis' => ['total_tasks' => 0, 'completed' => 0, 'in_progress' => 0, 'pending' => 0, 'total_customers' => 0],
+                'charts' => ['status_distribution' => []],
+                'customer_breakdown' => [],
+                'recent_activity' => [],
+                'pending_queries' => [],
+            ];
+        }
+
+        $customerIds = $partner->customers()->pluck('customers.id');
+        $baseQuery = Task::whereIn('customer_id', $customerIds);
+
+        $kpis = [
+            'total_tasks' => (clone $baseQuery)->count(),
+            'completed' => (clone $baseQuery)->where('status', 'completed')->count(),
+            'in_progress' => (clone $baseQuery)->where('status', 'in_progress')->count(),
+            'pending' => (clone $baseQuery)->where('status', 'pending')->count(),
+            'total_customers' => $customerIds->count(),
+        ];
+
+        $statusDistribution = Task::whereIn('customer_id', $customerIds)
+            ->selectRaw('status, count(*) as count')
+            ->groupBy('status')
+            ->pluck('count', 'status')
+            ->map(fn ($count, $status) => ['name' => ucfirst(str_replace('_', ' ', $status)), 'value' => $count])
+            ->values();
+
+        $customerBreakdown = $partner->customers()->with('user:id,name')->get()->map(function ($customer) {
+            $tasks = Task::where('customer_id', $customer->id);
+
+            return [
+                'customer_name' => $customer->user?->name ?? '-',
+                'total' => (clone $tasks)->count(),
+                'completed' => (clone $tasks)->where('status', 'completed')->count(),
+                'in_progress' => (clone $tasks)->where('status', 'in_progress')->count(),
+                'pending' => (clone $tasks)->where('status', 'pending')->count(),
+            ];
+        });
+
+        $recentActivity = Task::whereIn('customer_id', $customerIds)
+            ->with(['service:id,name', 'customer.user:id,name'])
+            ->latest('updated_at')
+            ->limit(10)
+            ->get()
+            ->map(fn (Task $t) => [
+                'id' => $t->id,
+                'type' => 'task',
+                'description' => ($t->customer?->user?->name ?? 'Unknown') . " — {$t->service?->name} — " . ucfirst(str_replace('_', ' ', $t->status)),
+                'status' => $t->status,
+                'timestamp' => $t->updated_at->diffForHumans(),
+            ]);
+
+        return [
+            'kpis' => $kpis,
+            'charts' => ['status_distribution' => $statusDistribution],
+            'customer_breakdown' => $customerBreakdown,
             'recent_activity' => $recentActivity,
             'pending_queries' => $this->pendingQueries($user),
         ];

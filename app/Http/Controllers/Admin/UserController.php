@@ -3,8 +3,10 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\Customer;
 use App\Models\CustomerDocument;
 use App\Models\DocumentType;
+use App\Models\Partner;
 use App\Models\User;
 use App\Notifications\UserInvitation;
 use Spatie\Permission\Models\Role;
@@ -51,7 +53,7 @@ class UserController extends Controller
         $users->through(function ($user) {
             $roles = $user->getRoleNames();
             $baseRole = $roles->first();
-            $additionalRole = $roles->first(fn ($r) => ! in_array($r, ['employee', 'customer', 'admin']));
+            $additionalRole = $roles->first(fn ($r) => ! in_array($r, ['employee', 'customer', 'admin', 'partner']));
 
             return [
                 'id' => $user->id,
@@ -83,6 +85,18 @@ class UserController extends Controller
             return Inertia::render('Admin/Users/CreateCustomer', ['roles' => $roles]);
         }
 
+        if ($type === 'partner') {
+            $customers = Customer::with('user:id,name')->get()->map(fn ($c) => [
+                'id' => $c->id,
+                'name' => $c->user?->name ?? '-',
+            ]);
+
+            return Inertia::render('Admin/Users/CreatePartner', [
+                'roles' => $roles,
+                'customers' => $customers,
+            ]);
+        }
+
         return Inertia::render('Admin/Users/CreateEmployee', ['roles' => $roles]);
     }
 
@@ -93,9 +107,16 @@ class UserController extends Controller
         $rules = [
             'name' => 'required|string|max:255',
             'email' => 'required|string|lowercase|email|max:255|unique:' . User::class,
-            'type' => 'required|string|in:employee,customer',
+            'type' => 'required|string|in:employee,customer,partner',
             'role' => 'nullable|string|exists:roles,name',
         ];
+
+        if ($type === 'partner') {
+            $rules['phone'] = 'nullable|string|max:20';
+            $rules['company'] = 'nullable|string|max:255';
+            $rules['customer_ids'] = 'nullable|array';
+            $rules['customer_ids.*'] = 'integer|exists:customers,id';
+        }
 
         if ($type === 'employee') {
             $rules['phone'] = 'nullable|string|max:20';
@@ -226,6 +247,17 @@ class UserController extends Controller
             $this->storeEmployeeDocuments($employee, $request);
         }
 
+        if ($type === 'partner') {
+            $partner = $user->partner()->create([
+                'phone' => $validated['phone'] ?? null,
+                'company' => $validated['company'] ?? null,
+            ]);
+
+            if (! empty($validated['customer_ids'])) {
+                $partner->customers()->sync($validated['customer_ids']);
+            }
+        }
+
         if ($type === 'customer') {
             $customer = $user->customer()->create([
                 'phone' => $validated['phone'],
@@ -260,6 +292,26 @@ class UserController extends Controller
 
             return Inertia::render('Admin/Users/ShowCustomer', [
                 'user' => $this->buildCustomerData($user),
+            ]);
+        }
+
+        if ($role === 'partner') {
+            $partner = $user->partner;
+            $customers = $partner?->customers()->with('user:id,name')->get()->map(fn ($c) => [
+                'id' => $c->id,
+                'name' => $c->user?->name ?? '-',
+            ]) ?? collect();
+
+            return Inertia::render('Admin/Users/ShowPartner', [
+                'user' => [
+                    'id' => $user->id,
+                    'name' => $user->name,
+                    'email' => $user->email,
+                    'phone' => $partner?->phone,
+                    'company' => $partner?->company,
+                    'customers' => $customers,
+                    'created_at' => $user->created_at->format('M d, Y'),
+                ],
             ]);
         }
 
@@ -324,6 +376,28 @@ class UserController extends Controller
             ]);
         }
 
+        if ($role === 'partner') {
+            $partner = $user->partner;
+            $allCustomers = Customer::with('user:id,name')->get()->map(fn ($c) => [
+                'id' => $c->id,
+                'name' => $c->user?->name ?? '-',
+            ]);
+
+            return Inertia::render('Admin/Users/EditPartner', [
+                'allRoles' => $allRoles,
+                'userRoles' => $userRoles,
+                'allCustomers' => $allCustomers,
+                'user' => [
+                    'id' => $user->id,
+                    'name' => $user->name,
+                    'email' => $user->email,
+                    'phone' => $partner?->phone,
+                    'company' => $partner?->company,
+                    'customer_ids' => $partner?->customers()->pluck('customers.id')->toArray() ?? [],
+                ],
+            ]);
+        }
+
         $emp = $user->employee;
 
         return Inertia::render('Admin/Users/EditEmployee', [
@@ -380,6 +454,13 @@ class UserController extends Controller
             'password' => ['nullable', 'confirmed', Rules\Password::defaults()],
             'role' => 'nullable|string|exists:roles,name',
         ];
+
+        if ($role === 'partner') {
+            $rules['phone'] = 'nullable|string|max:20';
+            $rules['company'] = 'nullable|string|max:255';
+            $rules['customer_ids'] = 'nullable|array';
+            $rules['customer_ids.*'] = 'integer|exists:customers,id';
+        }
 
         if ($role === 'employee') {
             $rules['phone'] = 'nullable|string|max:20';
@@ -484,12 +565,26 @@ class UserController extends Controller
                 : []),
         ]);
 
-        // Sync roles — always keep the base role (employee/customer))
+        // Sync roles — always keep the base role (employee/customer/partner)
         $newRoles = [$role];
         if (! empty($validated['role'])) {
             $newRoles[] = $validated['role'];
         }
         $user->syncRoles(array_unique($newRoles));
+
+        if ($role === 'partner') {
+            $partner = $user->partner()->updateOrCreate(
+                ['user_id' => $user->id],
+                [
+                    'phone' => $validated['phone'] ?? null,
+                    'company' => $validated['company'] ?? null,
+                ]
+            );
+            $partner->customers()->sync($validated['customer_ids'] ?? []);
+
+            return redirect()->route('admin.users.index', ['role' => 'partner'])
+                ->with('success', 'Partner updated successfully.');
+        }
 
         if ($role === 'employee') {
             $employee = $user->employee()->updateOrCreate(

@@ -60,5 +60,13 @@ class RolesAndPermissionsSeeder extends Seeder
             'view own profile',
             'edit own profile',
         ]);
+
+        $partnerRole = Role::firstOrCreate(['name' => 'partner']);
+        $partnerRole->syncPermissions([
+            'view tasks',
+            'view dashboard',
+            'view own profile',
+            'edit own profile',
+        ]);
     }
 }

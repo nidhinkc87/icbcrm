@@ -39,6 +39,7 @@ export default function Index({ users, filters }: Props) {
         { label: 'All', value: '' },
         { label: 'Employees', value: 'employee' },
         { label: 'Customers', value: 'customer' },
+        { label: 'Partners', value: 'partner' },
     ];
 
     const confirmDelete = (user: UserRow) => {
@@ -154,6 +155,9 @@ export default function Index({ users, filters }: Props) {
                                 </Dropdown.Link>
                                 <Dropdown.Link href={route('admin.users.create', { type: 'customer' })}>
                                     Customer
+                                </Dropdown.Link>
+                                <Dropdown.Link href={route('admin.users.create', { type: 'partner' })}>
+                                    Partner
                                 </Dropdown.Link>
                             </Dropdown.Content>
                         </Dropdown>

@@ -95,7 +95,7 @@ interface PendingQuery {
 }
 
 interface Props extends PageProps {
-    role: 'admin' | 'employee' | 'customer';
+    role: 'admin' | 'employee' | 'customer' | 'partner';
     kpis: Record<string, number>;
     charts: {
         status_distribution: ChartDataPoint[];
@@ -112,6 +112,7 @@ interface Props extends PageProps {
     collaborator_tasks?: CollaboratorTask[];
     upcoming_expirations?: ExpirationItem[];
     pending_queries?: PendingQuery[];
+    customer_breakdown?: { customer_name: string; total: number; completed: number; in_progress: number; pending: number }[];
 }
 
 const STATUS_COLORS: Record<string, string> = {
@@ -809,6 +810,103 @@ function CustomerDashboard({ kpis, charts, service_progress, recent_activity, pe
     );
 }
 
+function PartnerDashboard({ kpis, charts, customer_breakdown, recent_activity, pending_queries }: Props) {
+    return (
+        <>
+            {/* KPI Cards */}
+            <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">
+                <KpiCard label="My Customers" value={kpis.total_customers ?? 0} color="bg-purple-50"
+                    icon={<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="h-6 w-6 text-purple-600"><path strokeLinecap="round" strokeLinejoin="round" d="M18 18.72a9.094 9.094 0 003.741-.479 3 3 0 00-4.682-2.72m.94 3.198l.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0112 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 016 18.719m12 0a5.971 5.971 0 00-.941-3.197m0 0A5.995 5.995 0 0012 12.75a5.995 5.995 0 00-5.058 2.772m0 0a3 3 0 00-4.681 2.72 8.986 8.986 0 003.74.477m.94-3.197a5.971 5.971 0 00-.94 3.197M15 6.75a3 3 0 11-6 0 3 3 0 016 0zm6 3a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0zm-13.5 0a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0z" /></svg>}
+                />
+                <KpiCard label="Total Tasks" value={kpis.total_tasks} color="bg-emerald-50"
+                    icon={<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="h-6 w-6 text-emerald-600"><path strokeLinecap="round" strokeLinejoin="round" d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 002.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 00-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 00.75-.75 2.25 2.25 0 00-.1-.664m-5.8 0A2.251 2.251 0 0113.5 2.25H15c1.012 0 1.867.668 2.15 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V8.25m0 0H4.875c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V9.375c0-.621-.504-1.125-1.125-1.125H8.25zM6.75 12h.008v.008H6.75V12zm0 3h.008v.008H6.75V15zm0 3h.008v.008H6.75V18z" /></svg>}
+                />
+                <KpiCard label="Completed" value={kpis.completed} color="bg-green-50"
+                    icon={<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="h-6 w-6 text-green-600"><path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>}
+                />
+                <KpiCard label="In Progress" value={kpis.in_progress} color="bg-blue-50"
+                    icon={<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="h-6 w-6 text-blue-600"><path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182M2.985 19.644l3.181-3.182" /></svg>}
+                />
+                <KpiCard label="Pending" value={kpis.pending} color="bg-amber-50"
+                    icon={<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="h-6 w-6 text-amber-600"><path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>}
+                />
+            </div>
+
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+                {/* Status Chart */}
+                <ChartCard title="Task Status Overview">
+                    {charts.status_distribution.length > 0 ? (
+                        <ResponsiveContainer width="100%" height={250}>
+                            <PieChart>
+                                <Pie data={charts.status_distribution} cx="50%" cy="50%" innerRadius={60} outerRadius={100} paddingAngle={3} dataKey="value"
+                                    label={({ name, percent }: any) => `${name} ${((percent ?? 0) * 100).toFixed(0)}%`}>
+                                    {charts.status_distribution.map((entry, i) => (
+                                        <Cell key={i} fill={STATUS_COLORS[entry.name] || CHART_COLORS[i % CHART_COLORS.length]} />
+                                    ))}
+                                </Pie>
+                                <Tooltip content={<CustomTooltip />} />
+                            </PieChart>
+                        </ResponsiveContainer>
+                    ) : <EmptyChart message="No tasks yet" />}
+                </ChartCard>
+
+                {/* Customer Breakdown */}
+                <ChartCard title="Customer Breakdown">
+                    {customer_breakdown && customer_breakdown.length > 0 ? (
+                        <div className="max-h-[250px] space-y-4 overflow-y-auto pr-1">
+                            {customer_breakdown.map((cb: any, i: number) => {
+                                const completedPct = cb.total > 0 ? Math.round((cb.completed / cb.total) * 100) : 0;
+                                return (
+                                    <div key={i}>
+                                        <div className="flex items-center justify-between text-sm">
+                                            <span className="font-medium text-gray-900">{cb.customer_name}</span>
+                                            <span className="text-xs text-gray-500">{cb.completed}/{cb.total} done</span>
+                                        </div>
+                                        <div className="mt-1.5 h-2 w-full overflow-hidden rounded-full bg-gray-100">
+                                            <div className="h-full rounded-full bg-emerald-500 transition-all" style={{ width: `${completedPct}%` }} />
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    ) : (
+                        <div className="flex h-[250px] items-center justify-center">
+                            <p className="text-sm text-gray-400">No customers assigned</p>
+                        </div>
+                    )}
+                </ChartCard>
+            </div>
+
+            {/* Recent Activity */}
+            <ChartCard title="Recent Updates">
+                {recent_activity.length > 0 ? (
+                    <div className="max-h-[300px] space-y-3 overflow-y-auto pr-1">
+                        {recent_activity.map((item, i) => (
+                            <div key={`${item.type}-${item.id}-${i}`} className="flex items-start gap-3">
+                                <div className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-emerald-50">
+                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="h-3.5 w-3.5 text-emerald-600"><path strokeLinecap="round" strokeLinejoin="round" d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 002.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 00-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 00.75-.75 2.25 2.25 0 00-.1-.664m-5.8 0A2.251 2.251 0 0113.5 2.25H15c1.012 0 1.867.668 2.15 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V8.25m0 0H4.875c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V9.375c0-.621-.504-1.125-1.125-1.125H8.25zM6.75 12h.008v.008H6.75V12zm0 3h.008v.008H6.75V15zm0 3h.008v.008H6.75V18z" /></svg>
+                                </div>
+                                <div className="min-w-0 flex-1">
+                                    <p className="text-sm text-gray-700">{item.description}</p>
+                                    <p className="text-xs text-gray-400">{item.timestamp}</p>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                ) : (
+                    <div className="flex h-[200px] items-center justify-center">
+                        <p className="text-sm text-gray-400">No recent updates</p>
+                    </div>
+                )}
+            </ChartCard>
+
+            {pending_queries && pending_queries.length > 0 && (
+                <PendingQueriesWidget queries={pending_queries} />
+            )}
+        </>
+    );
+}
+
 export default function Dashboard(props: Props) {
     return (
         <AuthenticatedLayout
@@ -824,6 +922,7 @@ export default function Dashboard(props: Props) {
                 <div className="mx-auto max-w-7xl space-y-6 sm:px-6 lg:px-8">
                     {props.role === 'admin' && <AdminDashboard {...props} />}
                     {props.role === 'employee' && <EmployeeDashboard {...props} />}
+                    {props.role === 'partner' && <PartnerDashboard {...props} />}
                     {props.role === 'customer' && <CustomerDashboard {...props} />}
                 </div>
             </div>

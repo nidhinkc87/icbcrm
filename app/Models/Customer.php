@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 
@@ -52,5 +53,10 @@ class Customer extends Model
     public function bankDetails(): HasMany
     {
         return $this->hasMany(CustomerBankDetail::class);
+    }
+
+    public function partnerUsers(): BelongsToMany
+    {
+        return $this->belongsToMany(Partner::class, 'partner_customers')->withTimestamps();
     }
 }

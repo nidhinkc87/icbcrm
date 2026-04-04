@@ -123,7 +123,8 @@ class Task extends Model
             $q->where('created_by', $user->id)
               ->orWhere('responsible_id', $user->id)
               ->orWhereHas('collaborators', fn ($cq) => $cq->where('users.id', $user->id))
-              ->orWhereHas('customer', fn ($cq) => $cq->where('user_id', $user->id));
+              ->orWhereHas('customer', fn ($cq) => $cq->where('user_id', $user->id))
+              ->orWhereHas('customer.partnerUsers', fn ($pq) => $pq->where('partner_profiles.user_id', $user->id));
         });
     }
 }
