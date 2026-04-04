@@ -6,24 +6,26 @@
 @endif
 
 @section('content')
+    <div class="section-title">All Partners</div>
+
     <table>
         <thead>
             <tr>
-                <th>#</th>
+                <th style="width:30px">#</th>
                 <th>Partner Name</th>
                 <th>Customer</th>
                 <th>Emirates ID</th>
                 <th>Passport No</th>
-                <th class="text-center">Total Docs</th>
-                <th class="text-center">Expired</th>
-                <th class="text-center">Expiring Soon</th>
+                <th class="text-center" style="width:65px">Total Docs</th>
+                <th class="text-center" style="width:55px">Expired</th>
+                <th class="text-center" style="width:75px">Expiring Soon</th>
             </tr>
         </thead>
         <tbody>
             @forelse($partners as $i => $p)
                 <tr>
-                    <td>{{ $i + 1 }}</td>
-                    <td>{{ $p['name'] }}</td>
+                    <td class="text-center" style="color:#9ca3af">{{ $i + 1 }}</td>
+                    <td style="font-weight:600">{{ $p['name'] }}</td>
                     <td>{{ $p['customer_name'] }}</td>
                     <td>{{ $p['emirates_id_no'] }}</td>
                     <td>{{ $p['passport_no'] }}</td>
@@ -32,25 +34,25 @@
                         @if($p['expired_docs'] > 0)
                             <span class="badge badge-red">{{ $p['expired_docs'] }}</span>
                         @else
-                            0
+                            <span style="color:#9ca3af">0</span>
                         @endif
                     </td>
                     <td class="text-center">
                         @if($p['expiring_docs'] > 0)
                             <span class="badge badge-amber">{{ $p['expiring_docs'] }}</span>
                         @else
-                            0
+                            <span style="color:#9ca3af">0</span>
                         @endif
                     </td>
                 </tr>
             @empty
-                <tr><td colspan="8" class="text-center">No partners found.</td></tr>
+                <tr><td colspan="8" class="text-center" style="padding:20px;color:#9ca3af">No partners found.</td></tr>
             @endforelse
         </tbody>
     </table>
 
-    <div style="font-size: 10px; color: #6b7280; margin-top: 8px;">
-        Total: {{ count($partners) }} partner(s) &middot;
-        Expired documents: {{ collect($partners)->sum('expired_docs') }}
+    <div class="summary-footer">
+        <strong>Total:</strong> {{ count($partners) }} partner(s) &nbsp;&bull;&nbsp;
+        <strong>Expired Documents:</strong> {{ collect($partners)->sum('expired_docs') }}
     </div>
 @endsection

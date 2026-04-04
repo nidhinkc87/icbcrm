@@ -6,27 +6,29 @@
 @endif
 
 @section('content')
+    <div class="section-title">All Employees</div>
+
     <table>
         <thead>
             <tr>
-                <th>#</th>
+                <th style="width:30px">#</th>
                 <th>Name</th>
                 <th>Department</th>
                 <th>Designation</th>
-                <th class="text-center">Total Tasks</th>
-                <th class="text-center">Completed</th>
-                <th class="text-center">Rate</th>
-                <th class="text-center">On-Time</th>
-                <th class="text-center">Overdue</th>
-                <th class="text-center">Active</th>
-                <th class="text-center">Avg Days</th>
+                <th class="text-center" style="width:55px">Total</th>
+                <th class="text-center" style="width:65px">Completed</th>
+                <th class="text-center" style="width:45px">Rate</th>
+                <th class="text-center" style="width:55px">On-Time</th>
+                <th class="text-center" style="width:55px">Overdue</th>
+                <th class="text-center" style="width:45px">Active</th>
+                <th class="text-center" style="width:55px">Avg Days</th>
             </tr>
         </thead>
         <tbody>
             @forelse($employees as $i => $e)
                 <tr>
-                    <td>{{ $i + 1 }}</td>
-                    <td>{{ $e['name'] }}</td>
+                    <td class="text-center" style="color:#9ca3af">{{ $i + 1 }}</td>
+                    <td style="font-weight:600">{{ $e['name'] }}</td>
                     <td>{{ $e['department'] }}</td>
                     <td>{{ $e['designation'] }}</td>
                     <td class="text-center">{{ $e['total_tasks'] }}</td>
@@ -41,21 +43,21 @@
                         @if($e['overdue'] > 0)
                             <span class="badge badge-red">{{ $e['overdue'] }}</span>
                         @else
-                            0
+                            <span style="color:#9ca3af">0</span>
                         @endif
                     </td>
                     <td class="text-center">{{ $e['active_tasks'] }}</td>
                     <td class="text-center">{{ $e['avg_days'] ?? '-' }}</td>
                 </tr>
             @empty
-                <tr><td colspan="11" class="text-center">No employees found.</td></tr>
+                <tr><td colspan="11" class="text-center" style="padding:20px;color:#9ca3af">No employees found.</td></tr>
             @endforelse
         </tbody>
     </table>
 
-    <div style="font-size: 10px; color: #6b7280; margin-top: 8px;">
-        Total: {{ count($employees) }} employee(s) &middot;
-        Avg Completion Rate: {{ count($employees) > 0 ? round(collect($employees)->avg('completion_rate')) : 0 }}% &middot;
-        Total Overdue: {{ collect($employees)->sum('overdue') }}
+    <div class="summary-footer">
+        <strong>Total:</strong> {{ count($employees) }} employee(s) &nbsp;&bull;&nbsp;
+        <strong>Avg Completion Rate:</strong> {{ count($employees) > 0 ? round(collect($employees)->avg('completion_rate')) : 0 }}% &nbsp;&bull;&nbsp;
+        <strong>Total Overdue:</strong> {{ collect($employees)->sum('overdue') }}
     </div>
 @endsection
