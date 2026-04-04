@@ -993,13 +993,6 @@ export default function Calendar({ tasks_by_date, current_month, current_year, d
                         </div>
 
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Date *</label>
-                            <input type="date" value={eventForm.date} onChange={(e) => setEventForm({ ...eventForm, date: e.target.value })}
-                                className="block w-full rounded-lg border-gray-300 text-sm shadow-sm focus:border-emerald-500 focus:ring-emerald-500" />
-                            {eventErrors.date && <p className="mt-1 text-sm text-red-600">{eventErrors.date}</p>}
-                        </div>
-
-                        <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">Type *</label>
                             <select value={eventForm.type} onChange={(e) => setEventForm({ ...eventForm, type: e.target.value as EventType })}
                                 className="block w-full rounded-lg border-gray-300 text-sm shadow-sm focus:border-emerald-500 focus:ring-emerald-500">
@@ -1010,19 +1003,28 @@ export default function Calendar({ tasks_by_date, current_month, current_year, d
                             {eventErrors.type && <p className="mt-1 text-sm text-red-600">{eventErrors.type}</p>}
                         </div>
 
-                        <div>
+                        <div className="sm:col-span-3">
                             <label className="block text-sm font-medium text-gray-700 mb-1">Location</label>
                             <input type="text" value={eventForm.location} onChange={(e) => setEventForm({ ...eventForm, location: e.target.value })}
                                 className="block w-full rounded-lg border-gray-300 text-sm shadow-sm focus:border-emerald-500 focus:ring-emerald-500" placeholder="Office, client site..." />
                         </div>
 
                         <div>
-                            <label className="flex items-center gap-2 mt-6">
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Date *</label>
+                            <input type="date" value={eventForm.date} onChange={(e) => setEventForm({ ...eventForm, date: e.target.value })}
+                                className="block w-full rounded-lg border-gray-300 text-sm shadow-sm focus:border-emerald-500 focus:ring-emerald-500" />
+                            {eventErrors.date && <p className="mt-1 text-sm text-red-600">{eventErrors.date}</p>}
+                        </div>
+
+                        <div>
+                            <label className="flex items-center gap-2 mt-7">
                                 <input type="checkbox" checked={eventForm.all_day} onChange={(e) => setEventForm({ ...eventForm, all_day: e.target.checked, start_time: '', end_time: '' })}
                                     className="rounded border-gray-300 text-emerald-600 focus:ring-emerald-500" />
                                 <span className="text-sm text-gray-700">All day</span>
                             </label>
                         </div>
+
+                        <div />
 
                         {!eventForm.all_day && (
                             <>
