@@ -1042,14 +1042,14 @@ export default function Calendar({ tasks_by_date, current_month, current_year, d
                             </>
                         )}
 
-                        <div className="sm:col-span-2">
+                        <div className="sm:col-span-3">
                             <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
                             <textarea value={eventForm.description} onChange={(e) => setEventForm({ ...eventForm, description: e.target.value })}
                                 rows={2} className="block w-full rounded-lg border-gray-300 text-sm shadow-sm focus:border-emerald-500 focus:ring-emerald-500" placeholder="Notes about this event..." />
                         </div>
 
                         {/* Participants - searchable multi-select */}
-                        <div ref={participantRef}>
+                        <div className="sm:col-span-3" ref={participantRef}>
                             <label className="block text-sm font-medium text-gray-700 mb-1">Participants</label>
                             {/* Selected tags */}
                             <div className="relative">
