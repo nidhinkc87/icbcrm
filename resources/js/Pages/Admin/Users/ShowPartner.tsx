@@ -61,7 +61,7 @@ export default function ShowPartner({ user }: Props) {
             <Head title="Partner Details" />
 
             <div className="py-6">
-                <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">
+                <div className="max-w-4xl px-4 sm:px-6 lg:px-8">
                     <div className="overflow-hidden bg-white shadow sm:rounded-lg">
                         <div className="flex items-center justify-between border-b border-gray-200 px-6 py-4">
                             <h3 className="text-lg font-medium text-gray-900">{user.name}</h3>

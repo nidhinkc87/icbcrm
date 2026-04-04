@@ -92,7 +92,7 @@ export default function EditPartner({ user, allCustomers }: Props) {
             <Head title="Edit Partner" />
 
             <div className="py-6">
-                <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">
+                <div className="max-w-4xl px-4 sm:px-6 lg:px-8">
                     <div className="overflow-hidden bg-white p-6 shadow sm:rounded-lg">
                         <form onSubmit={submit}>
                             {/* Basic Info */}
