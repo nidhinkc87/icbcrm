@@ -1,6 +1,7 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link } from '@inertiajs/react';
 import { PageProps } from '@/types';
+import { useState } from 'react';
 
 interface Kpis {
     total_tasks: number;
@@ -100,7 +101,12 @@ function KpiCard({ label, value, sub, color = 'emerald' }: { label: string; valu
     );
 }
 
+const tabs = ['Services', 'Customers', 'Partners', 'Managers', 'Employees'] as const;
+type Tab = typeof tabs[number];
+
 export default function Dashboard({ kpis, services, customers, partners, managers, employees }: Props) {
+    const [activeTab, setActiveTab] = useState<Tab>('Services');
+
     return (
         <AuthenticatedLayout header={<h2 className="text-xl font-semibold leading-tight text-gray-800">Report Dashboard</h2>}>
             <Head title="Report Dashboard" />
@@ -122,166 +128,187 @@ export default function Dashboard({ kpis, services, customers, partners, manager
                         <KpiCard label="Renewals Due" value={kpis.total_renewals} sub={`${kpis.expired_docs} expired`} color={kpis.total_renewals > 0 ? 'red' : 'emerald'} />
                     </div>
 
-                    {/* Service Summary */}
-                    <Section title="Services">
-                        <table className="min-w-full divide-y divide-gray-200">
-                            <thead className="bg-gray-50">
-                                <tr>
-                                    <Th>Service</Th>
-                                    <Th center>Total Tasks</Th>
-                                    <Th center>Completed</Th>
-                                    <Th center>Rate</Th>
-                                    <Th center>Status</Th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-gray-200 bg-white">
-                                {services.map((s) => (
-                                    <tr key={s.id} className="hover:bg-gray-50">
-                                        <Td bold>{s.name}</Td>
-                                        <Td center>{s.total_tasks}</Td>
-                                        <Td center>{s.completed}</Td>
-                                        <Td center><RateBadge rate={s.rate} /></Td>
-                                        <Td center><StatusBadge active={s.is_active} /></Td>
-                                    </tr>
+                    {/* Tabbed Tables */}
+                    <div className="overflow-hidden rounded-lg bg-white shadow">
+                        {/* Tab buttons */}
+                        <div className="border-b border-gray-200">
+                            <nav className="-mb-px flex overflow-x-auto" aria-label="Tabs">
+                                {tabs.map((tab) => (
+                                    <button
+                                        key={tab}
+                                        type="button"
+                                        onClick={() => setActiveTab(tab)}
+                                        className={`whitespace-nowrap border-b-2 px-6 py-3 text-sm font-medium transition-colors ${
+                                            activeTab === tab
+                                                ? 'border-emerald-600 text-emerald-600'
+                                                : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
+                                        }`}
+                                    >
+                                        {tab}
+                                    </button>
                                 ))}
-                                {services.length === 0 && <EmptyRow cols={5} />}
-                            </tbody>
-                        </table>
-                    </Section>
+                            </nav>
+                        </div>
 
-                    {/* Customer Summary */}
-                    <Section title="Customers">
-                        <table className="min-w-full divide-y divide-gray-200">
-                            <thead className="bg-gray-50">
-                                <tr>
-                                    <Th>Customer</Th>
-                                    <Th center>Total Tasks</Th>
-                                    <Th center>Completed</Th>
-                                    <Th center>Rate</Th>
-                                    <Th center>Renewals</Th>
-                                    <Th center>Status</Th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-gray-200 bg-white">
-                                {customers.map((c) => (
-                                    <tr key={c.id} className="hover:bg-gray-50">
-                                        <Td bold>{c.name}</Td>
-                                        <Td center>{c.total_tasks}</Td>
-                                        <Td center>{c.completed}</Td>
-                                        <Td center><RateBadge rate={c.rate} /></Td>
-                                        <Td center>
-                                            {c.renewals > 0 ? (
-                                                <span className="inline-flex rounded-full bg-red-100 px-2 py-0.5 text-xs font-semibold text-red-800">{c.renewals}</span>
-                                            ) : <span className="text-gray-400">0</span>}
-                                        </Td>
-                                        <Td center><StatusBadge active={c.is_active} activeLabel="Active" inactiveLabel="Inactive" /></Td>
-                                    </tr>
-                                ))}
-                                {customers.length === 0 && <EmptyRow cols={6} />}
-                            </tbody>
-                        </table>
-                    </Section>
+                        {/* Tab content */}
+                        <div className="overflow-x-auto">
+                            {activeTab === 'Services' && (
+                                <table className="min-w-full divide-y divide-gray-200">
+                                    <thead className="bg-gray-50">
+                                        <tr>
+                                            <Th>Service</Th>
+                                            <Th center>Total Tasks</Th>
+                                            <Th center>Completed</Th>
+                                            <Th center>Rate</Th>
+                                            <Th center>Status</Th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-gray-200 bg-white">
+                                        {services.map((s) => (
+                                            <tr key={s.id} className="hover:bg-gray-50">
+                                                <Td bold>{s.name}</Td>
+                                                <Td center>{s.total_tasks}</Td>
+                                                <Td center>{s.completed}</Td>
+                                                <Td center><RateBadge rate={s.rate} /></Td>
+                                                <Td center><StatusBadge active={s.is_active} /></Td>
+                                            </tr>
+                                        ))}
+                                        {services.length === 0 && <EmptyRow cols={5} />}
+                                    </tbody>
+                                </table>
+                            )}
 
-                    {/* Partner Summary */}
-                    <Section title="Partners">
-                        <table className="min-w-full divide-y divide-gray-200">
-                            <thead className="bg-gray-50">
-                                <tr>
-                                    <Th>Partner</Th>
-                                    <Th>Customer</Th>
-                                    <Th center>Documents</Th>
-                                    <Th center>Renewals</Th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-gray-200 bg-white">
-                                {partners.map((p) => (
-                                    <tr key={p.id} className="hover:bg-gray-50">
-                                        <Td bold>{p.name}</Td>
-                                        <Td>{p.customer_name}</Td>
-                                        <Td center>{p.total_docs}</Td>
-                                        <Td center>
-                                            {p.renewals > 0 ? (
-                                                <span className="inline-flex rounded-full bg-red-100 px-2 py-0.5 text-xs font-semibold text-red-800">{p.renewals}</span>
-                                            ) : <span className="text-gray-400">0</span>}
-                                        </Td>
-                                    </tr>
-                                ))}
-                                {partners.length === 0 && <EmptyRow cols={4} />}
-                            </tbody>
-                        </table>
-                    </Section>
+                            {activeTab === 'Customers' && (
+                                <table className="min-w-full divide-y divide-gray-200">
+                                    <thead className="bg-gray-50">
+                                        <tr>
+                                            <Th>Customer</Th>
+                                            <Th center>Total Tasks</Th>
+                                            <Th center>Completed</Th>
+                                            <Th center>Rate</Th>
+                                            <Th center>Renewals</Th>
+                                            <Th center>Status</Th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-gray-200 bg-white">
+                                        {customers.map((c) => (
+                                            <tr key={c.id} className="hover:bg-gray-50">
+                                                <Td bold>{c.name}</Td>
+                                                <Td center>{c.total_tasks}</Td>
+                                                <Td center>{c.completed}</Td>
+                                                <Td center><RateBadge rate={c.rate} /></Td>
+                                                <Td center>
+                                                    {c.renewals > 0 ? (
+                                                        <span className="inline-flex rounded-full bg-red-100 px-2 py-0.5 text-xs font-semibold text-red-800">{c.renewals}</span>
+                                                    ) : <span className="text-gray-400">0</span>}
+                                                </Td>
+                                                <Td center><StatusBadge active={c.is_active} activeLabel="Active" inactiveLabel="Inactive" /></Td>
+                                            </tr>
+                                        ))}
+                                        {customers.length === 0 && <EmptyRow cols={6} />}
+                                    </tbody>
+                                </table>
+                            )}
 
-                    {/* Manager Summary */}
-                    <Section title="Managers">
-                        <table className="min-w-full divide-y divide-gray-200">
-                            <thead className="bg-gray-50">
-                                <tr>
-                                    <Th>Manager</Th>
-                                    <Th>Department</Th>
-                                    <Th center>Total Tasks</Th>
-                                    <Th center>Completed</Th>
-                                    <Th center>Rate</Th>
-                                    <Th center>Active</Th>
-                                    <Th center>Overdue</Th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-gray-200 bg-white">
-                                {managers.map((m) => (
-                                    <tr key={m.id} className="hover:bg-gray-50">
-                                        <Td bold>{m.name}</Td>
-                                        <Td>{m.department}</Td>
-                                        <Td center>{m.total_tasks}</Td>
-                                        <Td center>{m.completed}</Td>
-                                        <Td center><RateBadge rate={m.rate} /></Td>
-                                        <Td center>{m.active_tasks}</Td>
-                                        <Td center>
-                                            {m.overdue > 0 ? (
-                                                <span className="inline-flex rounded-full bg-red-100 px-2 py-0.5 text-xs font-semibold text-red-800">{m.overdue}</span>
-                                            ) : <span className="text-gray-400">0</span>}
-                                        </Td>
-                                    </tr>
-                                ))}
-                                {managers.length === 0 && <EmptyRow cols={7} />}
-                            </tbody>
-                        </table>
-                    </Section>
+                            {activeTab === 'Partners' && (
+                                <table className="min-w-full divide-y divide-gray-200">
+                                    <thead className="bg-gray-50">
+                                        <tr>
+                                            <Th>Partner</Th>
+                                            <Th>Customer</Th>
+                                            <Th center>Documents</Th>
+                                            <Th center>Renewals</Th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-gray-200 bg-white">
+                                        {partners.map((p) => (
+                                            <tr key={p.id} className="hover:bg-gray-50">
+                                                <Td bold>{p.name}</Td>
+                                                <Td>{p.customer_name}</Td>
+                                                <Td center>{p.total_docs}</Td>
+                                                <Td center>
+                                                    {p.renewals > 0 ? (
+                                                        <span className="inline-flex rounded-full bg-red-100 px-2 py-0.5 text-xs font-semibold text-red-800">{p.renewals}</span>
+                                                    ) : <span className="text-gray-400">0</span>}
+                                                </Td>
+                                            </tr>
+                                        ))}
+                                        {partners.length === 0 && <EmptyRow cols={4} />}
+                                    </tbody>
+                                </table>
+                            )}
 
-                    {/* Employee Summary */}
-                    <Section title="Employees">
-                        <table className="min-w-full divide-y divide-gray-200">
-                            <thead className="bg-gray-50">
-                                <tr>
-                                    <Th>Employee</Th>
-                                    <Th>Department</Th>
-                                    <Th>Designation</Th>
-                                    <Th center>Total Tasks</Th>
-                                    <Th center>Completed</Th>
-                                    <Th center>Rate</Th>
-                                    <Th center>Active</Th>
-                                    <Th center>Overdue</Th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-gray-200 bg-white">
-                                {employees.map((e) => (
-                                    <tr key={e.id} className="hover:bg-gray-50">
-                                        <Td bold>{e.name}</Td>
-                                        <Td>{e.department}</Td>
-                                        <Td>{e.designation}</Td>
-                                        <Td center>{e.total_tasks}</Td>
-                                        <Td center>{e.completed}</Td>
-                                        <Td center><RateBadge rate={e.rate} /></Td>
-                                        <Td center>{e.active_tasks}</Td>
-                                        <Td center>
-                                            {e.overdue > 0 ? (
-                                                <span className="inline-flex rounded-full bg-red-100 px-2 py-0.5 text-xs font-semibold text-red-800">{e.overdue}</span>
-                                            ) : <span className="text-gray-400">0</span>}
-                                        </Td>
-                                    </tr>
-                                ))}
-                                {employees.length === 0 && <EmptyRow cols={8} />}
-                            </tbody>
-                        </table>
-                    </Section>
+                            {activeTab === 'Managers' && (
+                                <table className="min-w-full divide-y divide-gray-200">
+                                    <thead className="bg-gray-50">
+                                        <tr>
+                                            <Th>Manager</Th>
+                                            <Th>Department</Th>
+                                            <Th center>Total Tasks</Th>
+                                            <Th center>Completed</Th>
+                                            <Th center>Rate</Th>
+                                            <Th center>Active</Th>
+                                            <Th center>Overdue</Th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-gray-200 bg-white">
+                                        {managers.map((m) => (
+                                            <tr key={m.id} className="hover:bg-gray-50">
+                                                <Td bold>{m.name}</Td>
+                                                <Td>{m.department}</Td>
+                                                <Td center>{m.total_tasks}</Td>
+                                                <Td center>{m.completed}</Td>
+                                                <Td center><RateBadge rate={m.rate} /></Td>
+                                                <Td center>{m.active_tasks}</Td>
+                                                <Td center>
+                                                    {m.overdue > 0 ? (
+                                                        <span className="inline-flex rounded-full bg-red-100 px-2 py-0.5 text-xs font-semibold text-red-800">{m.overdue}</span>
+                                                    ) : <span className="text-gray-400">0</span>}
+                                                </Td>
+                                            </tr>
+                                        ))}
+                                        {managers.length === 0 && <EmptyRow cols={7} />}
+                                    </tbody>
+                                </table>
+                            )}
+
+                            {activeTab === 'Employees' && (
+                                <table className="min-w-full divide-y divide-gray-200">
+                                    <thead className="bg-gray-50">
+                                        <tr>
+                                            <Th>Employee</Th>
+                                            <Th>Department</Th>
+                                            <Th>Designation</Th>
+                                            <Th center>Total Tasks</Th>
+                                            <Th center>Completed</Th>
+                                            <Th center>Rate</Th>
+                                            <Th center>Active</Th>
+                                            <Th center>Overdue</Th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-gray-200 bg-white">
+                                        {employees.map((e) => (
+                                            <tr key={e.id} className="hover:bg-gray-50">
+                                                <Td bold>{e.name}</Td>
+                                                <Td>{e.department}</Td>
+                                                <Td>{e.designation}</Td>
+                                                <Td center>{e.total_tasks}</Td>
+                                                <Td center>{e.completed}</Td>
+                                                <Td center><RateBadge rate={e.rate} /></Td>
+                                                <Td center>{e.active_tasks}</Td>
+                                                <Td center>
+                                                    {e.overdue > 0 ? (
+                                                        <span className="inline-flex rounded-full bg-red-100 px-2 py-0.5 text-xs font-semibold text-red-800">{e.overdue}</span>
+                                                    ) : <span className="text-gray-400">0</span>}
+                                                </Td>
+                                            </tr>
+                                        ))}
+                                        {employees.length === 0 && <EmptyRow cols={8} />}
+                                    </tbody>
+                                </table>
+                            )}
+                        </div>
+                    </div>
                 </div>
             </div>
         </AuthenticatedLayout>
@@ -289,17 +316,6 @@ export default function Dashboard({ kpis, services, customers, partners, manager
 }
 
 /* ── Shared sub-components ── */
-
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
-    return (
-        <div className="overflow-hidden rounded-lg bg-white shadow">
-            <div className="border-b border-gray-200 bg-gray-50 px-4 py-3">
-                <h3 className="text-sm font-semibold uppercase tracking-wider text-gray-600">{title}</h3>
-            </div>
-            <div className="overflow-x-auto">{children}</div>
-        </div>
-    );
-}
 
 function Th({ children, center }: { children: React.ReactNode; center?: boolean }) {
     return (
