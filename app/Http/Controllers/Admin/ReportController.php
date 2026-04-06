@@ -261,6 +261,119 @@ class ReportController extends Controller
         ];
     }
 
+    // ── Customer Detail ──────────────────────────────────────
+
+    public function customerShow(Customer $customer): Response
+    {
+        $today = Carbon::today();
+        $soon = $today->copy()->addDays(30);
+
+        $customer->load(['user', 'partners.documents.documentType', 'documents.documentType']);
+
+        // ── Services used by this customer (via tasks) ──
+        $tasks = Task::where('customer_id', $customer->id)
+            ->with(['service:id,name,is_active', 'responsible.employee:id,user_id,department,designation', 'creator:id,name'])
+            ->get();
+
+        $serviceGroups = $tasks->groupBy('service_id')->map(function ($serviceTasks, $serviceId) use ($today) {
+            $service = $serviceTasks->first()->service;
+            $total = $serviceTasks->count();
+            $completed = $serviceTasks->where('status', 'completed')->count();
+            $pending = $serviceTasks->where('status', 'pending')->count();
+            $inProgress = $serviceTasks->where('status', 'in_progress')->count();
+            $overdue = $serviceTasks->filter(fn ($t) => $t->status !== 'completed' && $t->due_date && $t->due_date->lt($today))->count();
+
+            // Collect unique employees/managers involved
+            $people = $serviceTasks->map(fn ($t) => $t->responsible)->filter()->unique('id');
+
+            return [
+                'service_id' => $serviceId,
+                'service_name' => $service?->name ?? 'Unknown',
+                'is_active' => $service?->is_active ?? false,
+                'total' => $total,
+                'completed' => $completed,
+                'pending' => $pending,
+                'in_progress' => $inProgress,
+                'overdue' => $overdue,
+                'rate' => $total > 0 ? round(($completed / $total) * 100) : 0,
+                'assigned_to' => $people->map(fn ($u) => [
+                    'id' => $u->id,
+                    'name' => $u->name,
+                    'role' => $u->roles->first()?->name ?? '-',
+                    'department' => $u->employee?->department ?? '-',
+                ])->values(),
+                'tasks' => $serviceTasks->map(fn (Task $t) => [
+                    'id' => $t->id,
+                    'status' => $t->status,
+                    'priority' => $t->priority,
+                    'due_date' => $t->due_date?->format('M d, Y'),
+                    'responsible_name' => $t->responsible?->name ?? '-',
+                    'is_overdue' => $t->status !== 'completed' && $t->due_date && $t->due_date->lt($today),
+                ])->values(),
+            ];
+        })->values();
+
+        // ── Partners ──
+        $partnerRows = $customer->partners->map(function (CustomerPartner $p) use ($today, $soon) {
+            $docs = $p->documents->whereNotNull('expiry_date');
+            $expired = $docs->filter(fn ($d) => $d->expiry_date->lt($today))->count();
+            $expiring = $docs->filter(fn ($d) => $d->expiry_date->gte($today) && $d->expiry_date->lte($soon))->count();
+
+            return [
+                'id' => $p->id,
+                'name' => $p->name,
+                'total_docs' => $p->documents->count(),
+                'renewals' => $expired + $expiring,
+            ];
+        })->values();
+
+        // ── People involved (unique employees + managers from all tasks) ──
+        $allPeople = $tasks->map(fn ($t) => $t->responsible)->filter()->unique('id');
+        $peopleRows = $allPeople->map(fn ($u) => [
+            'id' => $u->id,
+            'name' => $u->name,
+            'role' => $u->roles->first()?->name ?? '-',
+            'department' => $u->employee?->department ?? '-',
+            'designation' => $u->employee?->designation ?? '-',
+            'tasks_count' => $tasks->where('responsible_id', $u->id)->count(),
+            'completed_count' => $tasks->where('responsible_id', $u->id)->where('status', 'completed')->count(),
+        ])->values();
+
+        // ── Document renewals ──
+        $docs = $customer->documents->whereNotNull('expiry_date');
+        $expiredDocs = $docs->filter(fn ($d) => $d->expiry_date->lt($today))->count();
+        $expiringDocs = $docs->filter(fn ($d) => $d->expiry_date->gte($today) && $d->expiry_date->lte($soon))->count();
+
+        // ── KPIs ──
+        $totalTasks = $tasks->count();
+        $completedTasks = $tasks->where('status', 'completed')->count();
+
+        return Inertia::render('Admin/Reports/CustomerShow', [
+            'customer' => [
+                'id' => $customer->user_id,
+                'name' => $customer->user?->name ?? '-',
+                'email' => $customer->user?->email ?? '-',
+                'phone' => $customer->phone ?? '-',
+                'emirate' => $customer->emirate ?? '-',
+                'legal_type' => $customer->legal_type ?? '-',
+                'trade_license_no' => $customer->trade_license_no ?? '-',
+            ],
+            'kpis' => [
+                'total_tasks' => $totalTasks,
+                'completed' => $completedTasks,
+                'pending' => $tasks->where('status', 'pending')->count(),
+                'in_progress' => $tasks->where('status', 'in_progress')->count(),
+                'overdue' => $tasks->filter(fn ($t) => $t->status !== 'completed' && $t->due_date && $t->due_date->lt($today))->count(),
+                'rate' => $totalTasks > 0 ? round(($completedTasks / $totalTasks) * 100) : 0,
+                'renewals' => $expiredDocs + $expiringDocs,
+                'expired_docs' => $expiredDocs,
+            ],
+            'services' => $serviceGroups,
+            'partners' => $partnerRows,
+            'people' => $peopleRows,
+        ]);
+    }
+
     // ── Partners ───────────────────────────────────────────
 
     public function partners(Request $request): Response

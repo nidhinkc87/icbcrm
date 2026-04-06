@@ -62,6 +62,7 @@ Route::middleware(['auth', 'verified'])->prefix('admin/reports')->name('admin.re
         Route::get('customers', [ReportController::class, 'customers'])->name('customers');
         Route::get('customers/pdf', [ReportController::class, 'customersPdf'])->name('customers.pdf');
         Route::get('customers/excel', [ReportController::class, 'customersExcel'])->name('customers.excel');
+        Route::get('customers/{customer}', [ReportController::class, 'customerShow'])->name('customers.show');
     });
 
     Route::middleware('permission:view partner reports')->group(function () {

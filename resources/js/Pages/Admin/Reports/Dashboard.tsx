@@ -193,7 +193,7 @@ export default function Dashboard({ kpis, services, customers, partners, manager
                                     <tbody className="divide-y divide-gray-200 bg-white">
                                         {customers.map((c) => (
                                             <tr key={c.id} className="hover:bg-gray-50">
-                                                <Td bold>{c.name}</Td>
+                                                <Td bold><Link href={route('admin.reports.customers.show', c.id)} className="text-emerald-600 hover:text-emerald-800 hover:underline">{c.name}</Link></Td>
                                                 <Td center>{c.total_tasks}</Td>
                                                 <Td center>{c.completed}</Td>
                                                 <Td center><RateBadge rate={c.rate} /></Td>
