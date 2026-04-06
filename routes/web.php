@@ -50,13 +50,23 @@ Route::middleware(['auth', 'verified', 'role:admin'])->prefix('admin')->name('ad
     Route::get('performance/{user}', [EmployeePerformanceController::class, 'show'])->name('performance.show');
     Route::resource('expiry-rules', ExpiryRuleController::class)->except(['show']);
 
-    Route::prefix('reports')->name('reports.')->group(function () {
+});
+
+// Report routes (accessible by admin, managers, and employees with report permissions)
+Route::middleware(['auth', 'verified'])->prefix('admin/reports')->name('admin.reports.')->group(function () {
+    Route::middleware('permission:view customer reports')->group(function () {
         Route::get('customers', [ReportController::class, 'customers'])->name('customers');
         Route::get('customers/pdf', [ReportController::class, 'customersPdf'])->name('customers.pdf');
         Route::get('customers/excel', [ReportController::class, 'customersExcel'])->name('customers.excel');
+    });
+
+    Route::middleware('permission:view partner reports')->group(function () {
         Route::get('partners', [ReportController::class, 'partners'])->name('partners');
         Route::get('partners/pdf', [ReportController::class, 'partnersPdf'])->name('partners.pdf');
         Route::get('partners/excel', [ReportController::class, 'partnersExcel'])->name('partners.excel');
+    });
+
+    Route::middleware('permission:view employee reports')->group(function () {
         Route::get('employees', [ReportController::class, 'employees'])->name('employees');
         Route::get('employees/pdf', [ReportController::class, 'employeesPdf'])->name('employees.pdf');
         Route::get('employees/excel', [ReportController::class, 'employeesExcel'])->name('employees.excel');
@@ -65,6 +75,10 @@ Route::middleware(['auth', 'verified', 'role:admin'])->prefix('admin')->name('ad
         Route::get('employees/{user}', [ReportController::class, 'employeeShow'])->name('employees.show');
         Route::get('employees/{user}/pdf', [ReportController::class, 'employeeShowPdf'])->name('employees.show.pdf');
         Route::get('employees/{user}/excel', [ReportController::class, 'employeeShowExcel'])->name('employees.show.excel');
+
+        Route::get('employee-out', [ReportController::class, 'employeeOut'])->name('employee-out');
+        Route::get('employee-out/pdf', [ReportController::class, 'employeeOutPdf'])->name('employee-out.pdf');
+        Route::get('employee-out/excel', [ReportController::class, 'employeeOutExcel'])->name('employee-out.excel');
     });
 });
 

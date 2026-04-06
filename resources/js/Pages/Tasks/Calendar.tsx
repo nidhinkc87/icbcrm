@@ -23,12 +23,15 @@ interface CalendarTask {
 }
 
 type EventType = 'onsite' | 'meeting' | 'other';
+type MeetingType = 'internal' | 'external';
 
 interface CalendarEventItem {
     id: number;
     title: string;
     description: string | null;
     type: EventType;
+    meeting_type: MeetingType | null;
+    reason: string | null;
     location: string | null;
     date: string;
     start_time: string | null;
@@ -108,6 +111,16 @@ const eventTypeLabel: Record<EventType, string> = {
     onsite: 'Onsite Work',
     meeting: 'Meeting',
     other: 'Other',
+};
+
+const meetingTypeLabel: Record<MeetingType, string> = {
+    internal: 'Internal',
+    external: 'External',
+};
+
+const meetingTypeBadge: Record<MeetingType, string> = {
+    internal: 'bg-blue-100 text-blue-700',
+    external: 'bg-amber-100 text-amber-700',
 };
 
 const MONTH_NAMES = [
@@ -212,7 +225,7 @@ export default function Calendar({ tasks_by_date, current_month, current_year, d
     // Event modal state
     const [showEventModal, setShowEventModal] = useState(false);
     const [editingEvent, setEditingEvent] = useState<CalendarEventItem | null>(null);
-    const [eventForm, setEventForm] = useState({ title: '', description: '', type: 'meeting' as EventType, location: '', date: '', start_time: '', end_time: '', all_day: false, participant_ids: [] as number[] });
+    const [eventForm, setEventForm] = useState({ title: '', description: '', reason: '', type: 'meeting' as EventType, meeting_type: '' as MeetingType | '', location: '', date: '', start_time: '', end_time: '', all_day: false, participant_ids: [] as number[] });
     const [eventErrors, setEventErrors] = useState<Record<string, string>>({});
     const [eventSubmitting, setEventSubmitting] = useState(false);
     const [participantSearch, setParticipantSearch] = useState('');
@@ -267,7 +280,7 @@ export default function Calendar({ tasks_by_date, current_month, current_year, d
 
     const openCreateEvent = (date: string) => {
         setEditingEvent(null);
-        setEventForm({ title: '', description: '', type: 'meeting', location: '', date, start_time: '', end_time: '', all_day: false, participant_ids: [] });
+        setEventForm({ title: '', description: '', reason: '', type: 'meeting', meeting_type: '', location: '', date, start_time: '', end_time: '', all_day: false, participant_ids: [] });
         setEventErrors({});
         setParticipantSearch('');
         setParticipantDropdownOpen(false);
@@ -279,7 +292,9 @@ export default function Calendar({ tasks_by_date, current_month, current_year, d
         setEventForm({
             title: event.title,
             description: event.description ?? '',
+            reason: event.reason ?? '',
             type: event.type,
+            meeting_type: event.meeting_type ?? '',
             location: event.location ?? '',
             date: event.date,
             start_time: event.start_time?.slice(0, 5) ?? '',
@@ -438,6 +453,11 @@ export default function Calendar({ tasks_by_date, current_month, current_year, d
                     <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium ${eventTypeBadge[event.type]}`}>
                         {eventTypeLabel[event.type]}
                     </span>
+                    {event.meeting_type && (
+                        <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium ${meetingTypeBadge[event.meeting_type]}`}>
+                            {meetingTypeLabel[event.meeting_type]}
+                        </span>
+                    )}
                     {event.start_time && (
                         <span className="text-[10px] text-gray-400">
                             {event.start_time.slice(0, 5)}{event.end_time ? ` - ${event.end_time.slice(0, 5)}` : ''}
@@ -994,7 +1014,7 @@ export default function Calendar({ tasks_by_date, current_month, current_year, d
 
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">Type *</label>
-                            <select value={eventForm.type} onChange={(e) => setEventForm({ ...eventForm, type: e.target.value as EventType })}
+                            <select value={eventForm.type} onChange={(e) => setEventForm({ ...eventForm, type: e.target.value as EventType, meeting_type: e.target.value === 'meeting' ? eventForm.meeting_type : '' })}
                                 className="block w-full rounded-lg border-gray-300 text-sm shadow-sm focus:border-emerald-500 focus:ring-emerald-500">
                                 <option value="onsite">Onsite Work</option>
                                 <option value="meeting">Meeting</option>
@@ -1003,7 +1023,20 @@ export default function Calendar({ tasks_by_date, current_month, current_year, d
                             {eventErrors.type && <p className="mt-1 text-sm text-red-600">{eventErrors.type}</p>}
                         </div>
 
-                        <div className="sm:col-span-2">
+                        {eventForm.type === 'meeting' && (
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Meeting Type *</label>
+                                <select value={eventForm.meeting_type} onChange={(e) => setEventForm({ ...eventForm, meeting_type: e.target.value as MeetingType })}
+                                    className="block w-full rounded-lg border-gray-300 text-sm shadow-sm focus:border-emerald-500 focus:ring-emerald-500">
+                                    <option value="">Select...</option>
+                                    <option value="internal">Internal</option>
+                                    <option value="external">External</option>
+                                </select>
+                                {eventErrors.meeting_type && <p className="mt-1 text-sm text-red-600">{eventErrors.meeting_type}</p>}
+                            </div>
+                        )}
+
+                        <div className={eventForm.type === 'meeting' ? '' : 'sm:col-span-2'}>
                             <label className="block text-sm font-medium text-gray-700 mb-1">Location</label>
                             <input type="text" value={eventForm.location} onChange={(e) => setEventForm({ ...eventForm, location: e.target.value })}
                                 className="block w-full rounded-lg border-gray-300 text-sm shadow-sm focus:border-emerald-500 focus:ring-emerald-500" placeholder="Office, client site..." />
@@ -1044,11 +1077,20 @@ export default function Calendar({ tasks_by_date, current_month, current_year, d
                             </>
                         )}
 
-                        <div className="sm:col-span-3">
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
-                            <textarea value={eventForm.description} onChange={(e) => setEventForm({ ...eventForm, description: e.target.value })}
-                                rows={2} className="block w-full rounded-lg border-gray-300 text-sm shadow-sm focus:border-emerald-500 focus:ring-emerald-500" placeholder="Notes about this event..." />
-                        </div>
+                        {eventForm.type === 'onsite' ? (
+                            <div className="sm:col-span-3">
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Reason *</label>
+                                <textarea value={eventForm.reason} onChange={(e) => setEventForm({ ...eventForm, reason: e.target.value })}
+                                    rows={2} className="block w-full rounded-lg border-gray-300 text-sm shadow-sm focus:border-emerald-500 focus:ring-emerald-500" placeholder="Reason for onsite work..." />
+                                {eventErrors.reason && <p className="mt-1 text-sm text-red-600">{eventErrors.reason}</p>}
+                            </div>
+                        ) : (
+                            <div className="sm:col-span-3">
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                                <textarea value={eventForm.description} onChange={(e) => setEventForm({ ...eventForm, description: e.target.value })}
+                                    rows={2} className="block w-full rounded-lg border-gray-300 text-sm shadow-sm focus:border-emerald-500 focus:ring-emerald-500" placeholder="Notes about this event..." />
+                            </div>
+                        )}
 
                         {/* Participants - searchable multi-select */}
                         <div className="sm:col-span-3" ref={participantRef}>

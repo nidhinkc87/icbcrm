@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\CalendarEvent;
 use App\Models\Customer;
 use App\Models\CustomerPartner;
 use App\Models\Task;
@@ -12,6 +13,7 @@ use App\Models\User;
 use App\Exports\AllEmployeesPerformanceExport;
 use App\Exports\CustomersExport;
 use App\Exports\EmployeesExport;
+use App\Exports\EmployeeOutExport;
 use App\Exports\EmployeeShowExport;
 use App\Exports\PartnersExport;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -530,6 +532,92 @@ class ReportController extends Controller
             ],
             'filters' => ['period' => $period],
         ];
+    }
+
+    // ── Employee Out (Onsite) Report ──────────────────────────
+
+    public function employeeOut(Request $request): Response
+    {
+        $month = $request->query('month', now()->format('Y-m'));
+        $search = $request->query('search');
+        $startOfMonth = Carbon::parse($month . '-01')->startOfMonth();
+
+        return Inertia::render('Admin/Reports/EmployeeOut', [
+            'records' => $this->getEmployeeOutRecords($request),
+            'filters' => [
+                'month' => $month,
+                'search' => $search,
+            ],
+            'month_label' => $startOfMonth->format('F Y'),
+        ]);
+    }
+
+    public function employeeOutPdf(Request $request)
+    {
+        $month = $request->query('month', now()->format('Y-m'));
+        $records = $this->getEmployeeOutRecords($request)->toArray();
+        $monthLabel = Carbon::parse($month . '-01')->format('F Y');
+
+        $pdf = Pdf::loadView('reports.employee-out', compact('records', 'monthLabel'))
+            ->setPaper('a4', 'landscape');
+
+        return $pdf->download('employee-out-report-' . $month . '.pdf');
+    }
+
+    public function employeeOutExcel(Request $request)
+    {
+        $month = $request->query('month', now()->format('Y-m'));
+        $records = $this->getEmployeeOutRecords($request)->toArray();
+
+        return Excel::download(
+            new EmployeeOutExport($records),
+            'employee-out-report-' . $month . '.xlsx'
+        );
+    }
+
+    private function getEmployeeOutRecords(Request $request)
+    {
+        $month = $request->query('month', now()->format('Y-m'));
+        $search = $request->query('search');
+
+        $startOfMonth = Carbon::parse($month . '-01')->startOfMonth();
+        $endOfMonth = $startOfMonth->copy()->endOfMonth();
+
+        $events = CalendarEvent::with(['creator', 'participants'])
+            ->where('type', 'onsite')
+            ->whereBetween('date', [$startOfMonth, $endOfMonth])
+            ->when($search, function ($q) use ($search) {
+                $q->where(function ($q) use ($search) {
+                    $q->whereHas('creator', fn ($u) => $u->where('name', 'like', "%{$search}%"))
+                      ->orWhereHas('participants', fn ($u) => $u->where('name', 'like', "%{$search}%"));
+                });
+            })
+            ->orderBy('date')
+            ->orderBy('start_time')
+            ->get();
+
+        return $events->map(function (CalendarEvent $event) use ($search) {
+            $people = collect([$event->creator])->merge($event->participants)->unique('id');
+
+            if ($search) {
+                $people = $people->filter(fn ($user) => str_contains(strtolower($user->name), strtolower($search)));
+            }
+
+            return $people->map(fn ($user) => [
+                'id' => $event->id . '-' . $user->id,
+                'date' => $event->date->format('Y-m-d'),
+                'date_display' => $event->date->format('D, M d, Y'),
+                'employee_name' => $user->name,
+                'status' => 'Onsite',
+                'location' => $event->location ?? '-',
+                'timing' => $event->all_day
+                    ? 'All Day'
+                    : ($event->start_time && $event->end_time
+                        ? Carbon::parse($event->start_time)->format('h:i A') . ' - ' . Carbon::parse($event->end_time)->format('h:i A')
+                        : '-'),
+                'reason' => $event->reason ?? '-',
+            ]);
+        })->flatten(1)->values();
     }
 
     // ── Helpers ─────────────────────────────────────────────

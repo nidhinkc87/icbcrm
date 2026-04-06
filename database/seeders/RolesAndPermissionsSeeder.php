@@ -32,6 +32,9 @@ class RolesAndPermissionsSeeder extends Seeder
             'view dashboard',
             'view own profile',
             'edit own profile',
+            'view customer reports',
+            'view partner reports',
+            'view employee reports',
         ];
 
         foreach ($permissions as $permission) {
@@ -40,6 +43,23 @@ class RolesAndPermissionsSeeder extends Seeder
 
         $adminRole = Role::firstOrCreate(['name' => 'admin']);
         $adminRole->syncPermissions(Permission::all());
+
+        $managerRole = Role::firstOrCreate(['name' => 'manager']);
+        $managerRole->syncPermissions([
+            'view customers',
+            'create customers',
+            'edit customers',
+            'delete customers',
+            'view employees',
+            'view tasks',
+            'assign tasks',
+            'view dashboard',
+            'view own profile',
+            'edit own profile',
+            'view customer reports',
+            'view partner reports',
+            'view employee reports',
+        ]);
 
         $employeeRole = Role::firstOrCreate(['name' => 'employee']);
         $employeeRole->syncPermissions([

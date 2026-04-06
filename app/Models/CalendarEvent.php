@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 class CalendarEvent extends Model
 {
     protected $fillable = [
-        'created_by', 'title', 'description', 'type',
+        'created_by', 'title', 'description', 'type', 'meeting_type', 'reason',
         'location', 'date', 'start_time', 'end_time', 'all_day',
     ];
 
