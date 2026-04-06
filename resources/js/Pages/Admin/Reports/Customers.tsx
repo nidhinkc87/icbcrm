@@ -121,6 +121,7 @@ export default function Customers({ customers, filters }: Props) {
                                         <th className="px-4 py-3 text-center text-xs font-medium uppercase tracking-wider text-gray-500">Expiring</th>
                                         <th className="px-4 py-3 text-center text-xs font-medium uppercase tracking-wider text-gray-500">Tasks</th>
                                         <th className="px-4 py-3 text-center text-xs font-medium uppercase tracking-wider text-gray-500">Pending</th>
+                                        <th className="px-4 py-3 text-center text-xs font-medium uppercase tracking-wider text-gray-500">Details</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-200 bg-white">
@@ -150,10 +151,18 @@ export default function Customers({ customers, filters }: Props) {
                                                     <span className="inline-flex rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-800">{c.pending_tasks}</span>
                                                 ) : '0'}
                                             </td>
+                                            <td className="whitespace-nowrap px-4 py-3 text-center text-sm">
+                                                <Link
+                                                    href={route('admin.reports.customers.show', c.id)}
+                                                    className="text-emerald-600 hover:text-emerald-800 hover:underline"
+                                                >
+                                                    View
+                                                </Link>
+                                            </td>
                                         </tr>
                                     ))}
                                     {customers.data.length === 0 && (
-                                        <tr><td colSpan={12} className="px-4 py-8 text-center text-sm text-gray-400">No customers found.</td></tr>
+                                        <tr><td colSpan={13} className="px-4 py-8 text-center text-sm text-gray-400">No customers found.</td></tr>
                                     )}
                                 </tbody>
                             </table>

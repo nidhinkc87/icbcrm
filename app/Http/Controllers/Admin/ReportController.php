@@ -67,7 +67,7 @@ class ReportController extends Controller
             $hasActiveTasks = Task::where('customer_id', $c->id)->whereIn('status', ['pending', 'in_progress'])->exists();
 
             return [
-                'id' => $c->user_id,
+                'id' => $c->id,
                 'name' => $c->user?->name ?? '-',
                 'total_tasks' => $total,
                 'completed' => $completed,
@@ -237,7 +237,7 @@ class ReportController extends Controller
         $pendingTasks = Task::where('customer_id', $c->id)->where('status', '!=', 'completed')->count();
 
         return [
-            'id' => $c->user_id,
+            'id' => $c->id,
             'name' => $c->user?->name ?? '-',
             'email' => $c->user?->email ?? '-',
             'phone' => $c->phone ?? '-',
@@ -350,7 +350,7 @@ class ReportController extends Controller
 
         return Inertia::render('Admin/Reports/CustomerShow', [
             'customer' => [
-                'id' => $customer->user_id,
+                'id' => $customer->id,
                 'name' => $customer->user?->name ?? '-',
                 'email' => $customer->user?->email ?? '-',
                 'phone' => $customer->phone ?? '-',
