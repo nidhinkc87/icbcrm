@@ -121,14 +121,15 @@ export default function Customers({ customers, filters }: Props) {
                                         <th className="px-4 py-3 text-center text-xs font-medium uppercase tracking-wider text-gray-500">Expiring</th>
                                         <th className="px-4 py-3 text-center text-xs font-medium uppercase tracking-wider text-gray-500">Tasks</th>
                                         <th className="px-4 py-3 text-center text-xs font-medium uppercase tracking-wider text-gray-500">Pending</th>
-                                        <th className="px-4 py-3 text-center text-xs font-medium uppercase tracking-wider text-gray-500">Details</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-200 bg-white">
                                     {customers.data.map((c, i) => (
                                         <tr key={c.id} className="hover:bg-gray-50">
                                             <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-500">{i + 1}</td>
-                                            <td className="whitespace-nowrap px-4 py-3 text-sm font-medium text-gray-900">{c.name}</td>
+                                            <td className="whitespace-nowrap px-4 py-3 text-sm font-medium">
+                                                <Link href={route('admin.reports.customers.show', c.id)} className="text-emerald-600 hover:text-emerald-800 hover:underline">{c.name}</Link>
+                                            </td>
                                             <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-500">{c.email}</td>
                                             <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-500">{c.phone}</td>
                                             <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-500">{c.emirate}</td>
@@ -151,18 +152,10 @@ export default function Customers({ customers, filters }: Props) {
                                                     <span className="inline-flex rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-800">{c.pending_tasks}</span>
                                                 ) : '0'}
                                             </td>
-                                            <td className="whitespace-nowrap px-4 py-3 text-center text-sm">
-                                                <Link
-                                                    href={route('admin.reports.customers.show', c.id)}
-                                                    className="text-emerald-600 hover:text-emerald-800 hover:underline"
-                                                >
-                                                    View
-                                                </Link>
-                                            </td>
                                         </tr>
                                     ))}
                                     {customers.data.length === 0 && (
-                                        <tr><td colSpan={13} className="px-4 py-8 text-center text-sm text-gray-400">No customers found.</td></tr>
+                                        <tr><td colSpan={12} className="px-4 py-8 text-center text-sm text-gray-400">No customers found.</td></tr>
                                     )}
                                 </tbody>
                             </table>
