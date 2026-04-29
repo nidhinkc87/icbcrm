@@ -31,16 +31,19 @@ interface Props extends PageProps {
 }
 
 export default function Index({ users, filters }: Props) {
-    const { flash } = usePage<PageProps>().props;
+    const { flash, auth } = usePage<PageProps>().props;
+    const isAdmin = auth.user.roles?.includes('admin');
     const [confirmingDeletion, setConfirmingDeletion] = useState(false);
     const [userToDelete, setUserToDelete] = useState<UserRow | null>(null);
 
-    const filterTabs = [
-        { label: 'All', value: '' },
-        { label: 'Employees', value: 'employee' },
-        { label: 'Customers', value: 'customer' },
-        { label: 'Partners', value: 'partner' },
-    ];
+    const filterTabs = isAdmin
+        ? [
+              { label: 'All', value: '' },
+              { label: 'Employees', value: 'employee' },
+              { label: 'Customers', value: 'customer' },
+              { label: 'Partners', value: 'partner' },
+          ]
+        : [{ label: 'Customers', value: 'customer' }];
 
     const confirmDelete = (user: UserRow) => {
         setUserToDelete(user);
@@ -122,11 +125,11 @@ export default function Index({ users, filters }: Props) {
         <AuthenticatedLayout
             header={
                 <h2 className="text-xl font-semibold leading-tight text-gray-800">
-                    Users
+                    {isAdmin ? 'Users' : 'Customers'}
                 </h2>
             }
         >
-            <Head title="Users" />
+            <Head title={isAdmin ? 'Users' : 'Customers'} />
 
             <div className="py-12">
                 <div className="mx-auto max-w-7xl sm:px-6 lg:px-8">
@@ -137,30 +140,39 @@ export default function Index({ users, filters }: Props) {
                     )}
 
                     <div className="mb-4 flex justify-end">
-                        <Dropdown>
-                            <Dropdown.Trigger>
-                                <button
-                                    type="button"
-                                    className="inline-flex items-center rounded-md border border-transparent bg-emerald-600 px-4 py-2 text-xs font-semibold uppercase tracking-widest text-white transition duration-150 ease-in-out hover:bg-emerald-700 focus:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 active:bg-emerald-900"
-                                >
-                                    Create
-                                    <svg className="-me-0.5 ms-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                                        <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
-                                    </svg>
-                                </button>
-                            </Dropdown.Trigger>
-                            <Dropdown.Content align="right">
-                                <Dropdown.Link href={route('admin.users.create', { type: 'employee' })}>
-                                    Employee
-                                </Dropdown.Link>
-                                <Dropdown.Link href={route('admin.users.create', { type: 'customer' })}>
-                                    Customer
-                                </Dropdown.Link>
-                                <Dropdown.Link href={route('admin.users.create', { type: 'partner' })}>
-                                    Partner
-                                </Dropdown.Link>
-                            </Dropdown.Content>
-                        </Dropdown>
+                        {isAdmin ? (
+                            <Dropdown>
+                                <Dropdown.Trigger>
+                                    <button
+                                        type="button"
+                                        className="inline-flex items-center rounded-md border border-transparent bg-emerald-600 px-4 py-2 text-xs font-semibold uppercase tracking-widest text-white transition duration-150 ease-in-out hover:bg-emerald-700 focus:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 active:bg-emerald-900"
+                                    >
+                                        Create
+                                        <svg className="-me-0.5 ms-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                                            <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
+                                        </svg>
+                                    </button>
+                                </Dropdown.Trigger>
+                                <Dropdown.Content align="right">
+                                    <Dropdown.Link href={route('admin.users.create', { type: 'employee' })}>
+                                        Employee
+                                    </Dropdown.Link>
+                                    <Dropdown.Link href={route('admin.users.create', { type: 'customer' })}>
+                                        Customer
+                                    </Dropdown.Link>
+                                    <Dropdown.Link href={route('admin.users.create', { type: 'partner' })}>
+                                        Partner
+                                    </Dropdown.Link>
+                                </Dropdown.Content>
+                            </Dropdown>
+                        ) : auth.user.permissions?.includes('create customers') ? (
+                            <Link
+                                href={route('admin.users.create', { type: 'customer' })}
+                                className="inline-flex items-center rounded-md border border-transparent bg-emerald-600 px-4 py-2 text-xs font-semibold uppercase tracking-widest text-white transition duration-150 ease-in-out hover:bg-emerald-700 focus:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 active:bg-emerald-900"
+                            >
+                                Add Customer
+                            </Link>
+                        ) : null}
                     </div>
 
                     <div className="overflow-hidden bg-white shadow-sm sm:rounded-lg">

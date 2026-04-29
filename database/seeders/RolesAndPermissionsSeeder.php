@@ -36,6 +36,11 @@ class RolesAndPermissionsSeeder extends Seeder
             'view partner reports',
             'view employee reports',
             'view service reports',
+            'view own customer report',
+            'view own meetings report',
+            'view own pending tasks report',
+            'request services',
+            'upload own documents',
         ];
 
         foreach ($permissions as $permission) {
@@ -61,6 +66,9 @@ class RolesAndPermissionsSeeder extends Seeder
             'view partner reports',
             'view employee reports',
             'view service reports',
+            'view own customer report',
+            'view own meetings report',
+            'view own pending tasks report',
         ]);
 
         $employeeRole = Role::firstOrCreate(['name' => 'employee']);
@@ -73,6 +81,9 @@ class RolesAndPermissionsSeeder extends Seeder
             'view dashboard',
             'view own profile',
             'edit own profile',
+            'view own customer report',
+            'view own meetings report',
+            'view own pending tasks report',
         ]);
 
         $customerRole = Role::firstOrCreate(['name' => 'customer']);
@@ -81,6 +92,8 @@ class RolesAndPermissionsSeeder extends Seeder
             'view dashboard',
             'view own profile',
             'edit own profile',
+            'request services',
+            'upload own documents',
         ]);
 
         $partnerRole = Role::firstOrCreate(['name' => 'partner']);

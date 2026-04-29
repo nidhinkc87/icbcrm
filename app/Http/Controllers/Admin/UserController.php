@@ -22,9 +22,25 @@ use Inertia\Response;
 
 class UserController extends Controller
 {
+    private function guardTargetUser(User $target, string $action): void
+    {
+        $auth = auth()->user();
+        if ($auth->hasRole('admin')) {
+            return;
+        }
+
+        abort_unless($target->hasRole('customer'), 403);
+        abort_unless($auth->can("$action customers"), 403);
+    }
+
     public function index(Request $request): Response
     {
-        $role = $request->query('role');
+        $isAdmin = $request->user()->hasRole('admin');
+        $role = $isAdmin ? $request->query('role') : 'customer';
+
+        if (! $isAdmin) {
+            abort_unless($request->user()->can('view customers'), 403);
+        }
         $search = $request->query('search');
         $sortField = $request->query('sort', 'created_at');
         $sortDirection = $request->query('direction', 'desc');
@@ -78,7 +94,13 @@ class UserController extends Controller
 
     public function create(Request $request): Response
     {
-        $type = $request->query('type', 'employee');
+        $isAdmin = $request->user()->hasRole('admin');
+        $type = $isAdmin ? $request->query('type', 'employee') : 'customer';
+
+        if (! $isAdmin) {
+            abort_unless($request->user()->can('create customers'), 403);
+        }
+
         $roles = Role::where('name', '!=', 'admin')->pluck('name');
 
         if ($type === 'customer') {
@@ -94,7 +116,13 @@ class UserController extends Controller
 
     public function store(Request $request): RedirectResponse
     {
+        $isAdmin = $request->user()->hasRole('admin');
         $type = $request->input('type', 'employee');
+
+        if (! $isAdmin) {
+            abort_unless($type === 'customer', 403);
+            abort_unless($request->user()->can('create customers'), 403);
+        }
 
         $rules = [
             'name' => 'required|string|max:255',
@@ -223,7 +251,7 @@ class UserController extends Controller
         ]);
 
         $roles = [$validated['type']];
-        if (! empty($validated['role'])) {
+        if (! empty($validated['role']) && auth()->user()->hasRole('admin')) {
             $roles[] = $validated['role'];
         }
         $user->syncRoles(array_unique($roles));
@@ -316,6 +344,7 @@ class UserController extends Controller
 
     public function show(User $user): Response
     {
+        $this->guardTargetUser($user, 'view');
         $role = $user->getRoleNames()->first();
 
         if ($role === 'customer') {
@@ -411,6 +440,7 @@ class UserController extends Controller
 
     public function edit(User $user): Response
     {
+        $this->guardTargetUser($user, 'edit');
         $role = $user->getRoleNames()->first();
         $allRoles = Role::where('name', '!=', 'admin')->pluck('name');
         $userRoles = $user->getRoleNames()->toArray();
@@ -513,6 +543,7 @@ class UserController extends Controller
 
     public function update(Request $request, User $user): RedirectResponse
     {
+        $this->guardTargetUser($user, 'edit');
         $role = $user->getRoleNames()->first();
 
         $rules = [
@@ -650,9 +681,9 @@ class UserController extends Controller
                 : []),
         ]);
 
-        // Sync roles — always keep the base role (employee/customer/partner)
+        // Sync roles — always keep the base role (employee/customer/partner). Only admins can assign extra roles.
         $newRoles = [$role];
-        if (! empty($validated['role'])) {
+        if (! empty($validated['role']) && auth()->user()->hasRole('admin')) {
             $newRoles[] = $validated['role'];
         }
         $user->syncRoles(array_unique($newRoles));
@@ -751,6 +782,8 @@ class UserController extends Controller
 
     public function destroy(User $user): RedirectResponse
     {
+        $this->guardTargetUser($user, 'delete');
+
         if ($user->id === auth()->id()) {
             return back()->withErrors(['error' => 'You cannot delete your own account.']);
         }

@@ -39,6 +39,22 @@ class DatabaseSeeder extends Seeder
         );
         $customer->assignRole('customer');
 
+        \App\Models\Customer::updateOrCreate(
+            ['user_id' => $customer->id],
+            [
+                'phone' => '+971 50 000 0000',
+                'address_line' => 'Test Address Line',
+                'city' => 'Dubai',
+                'emirate' => 'Dubai',
+                'country' => 'UAE',
+                'legal_type' => 'LLC',
+                'trade_license_no' => 'TEST-0001',
+                'issuing_authority' => 'DED',
+                'contact_person_name' => 'Test Client',
+                'telephone' => '+971 4 000 0000',
+            ]
+        );
+
         $this->call(SampleDataSeeder::class);
         $this->call(DocumentTypeSeeder::class);
         $this->call(ExpiryActionRuleSeeder::class);

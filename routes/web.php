@@ -8,6 +8,7 @@ use App\Http\Controllers\Admin\RoleController;
 use App\Http\Controllers\Admin\ServiceController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\CalendarEventController;
+use App\Http\Controllers\Customer\PortalController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\ProfileController;
@@ -40,7 +41,6 @@ Route::middleware('auth')->group(function () {
 
 // Admin routes
 Route::middleware(['auth', 'verified', 'role:admin'])->prefix('admin')->name('admin.')->group(function () {
-    Route::resource('users', UserController::class);
     Route::resource('roles', RoleController::class)->except(['show']);
     Route::resource('permissions', PermissionController::class)->only(['index', 'create', 'store', 'destroy']);
     Route::resource('services', ServiceController::class)->except(['show']);
@@ -50,6 +50,12 @@ Route::middleware(['auth', 'verified', 'role:admin'])->prefix('admin')->name('ad
     Route::get('performance/{user}', [EmployeePerformanceController::class, 'show'])->name('performance.show');
     Route::resource('expiry-rules', ExpiryRuleController::class)->except(['show']);
 
+});
+
+// User management — admins manage all roles, non-admins are constrained to customers
+// (controller enforces customer-only scope and per-action permission for non-admins)
+Route::middleware(['auth', 'verified'])->prefix('admin')->name('admin.')->group(function () {
+    Route::resource('users', UserController::class);
 });
 
 // Report routes (accessible by admin, managers, and employees with report permissions)
@@ -74,6 +80,18 @@ Route::middleware(['auth', 'verified'])->prefix('admin/reports')->name('admin.re
     Route::middleware('permission:view service reports')->group(function () {
         Route::get('services', [ReportController::class, 'services'])->name('services');
         Route::get('services/{service}', [ReportController::class, 'serviceShow'])->name('services.show');
+    });
+
+    Route::middleware('permission:view own customer report')->group(function () {
+        Route::get('my-customers', [ReportController::class, 'myCustomers'])->name('my-customers');
+    });
+
+    Route::middleware('permission:view own meetings report')->group(function () {
+        Route::get('my-meetings', [ReportController::class, 'myMeetings'])->name('my-meetings');
+    });
+
+    Route::middleware('permission:view own pending tasks report')->group(function () {
+        Route::get('my-pending-tasks', [ReportController::class, 'myPendingTasks'])->name('my-pending-tasks');
     });
 
     Route::middleware('permission:view employee reports')->group(function () {
@@ -126,6 +144,31 @@ Route::middleware(['auth', 'verified'])->prefix('tasks')->name('tasks.')->group(
     Route::post('/{task}/queries/{query}/respond', [TaskQueryController::class, 'respond'])->name('queries.respond');
     Route::patch('/{task}/queries/{query}/close', [TaskQueryController::class, 'close'])->name('queries.close');
     Route::patch('/{task}/queries/{query}/reopen', [TaskQueryController::class, 'reopen'])->name('queries.reopen');
+});
+
+// Customer portal (browse services, request services, upload docs, track progress, reports)
+Route::middleware(['auth', 'verified', 'role:customer'])->prefix('portal')->name('customer.')->group(function () {
+    Route::get('services', [PortalController::class, 'services'])
+        ->middleware('permission:request services')
+        ->name('services');
+    Route::get('services/{service}/request', [PortalController::class, 'serviceRequestForm'])
+        ->middleware('permission:request services')
+        ->name('services.request');
+    Route::post('services/{service}/request', [PortalController::class, 'submitServiceRequest'])
+        ->middleware('permission:request services')
+        ->name('services.submit');
+
+    Route::get('progress', [PortalController::class, 'progress'])->name('progress');
+
+    Route::get('documents', [PortalController::class, 'documents'])
+        ->middleware('permission:upload own documents')
+        ->name('documents');
+    Route::post('documents', [PortalController::class, 'storeDocument'])
+        ->middleware('permission:upload own documents')
+        ->name('documents.store');
+    Route::get('document-tracker', [PortalController::class, 'documentTracker'])->name('document-tracker');
+
+    Route::get('reports', [PortalController::class, 'reports'])->name('reports');
 });
 
 // Calendar events (onsite work, meetings)

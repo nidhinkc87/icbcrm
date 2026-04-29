@@ -1025,6 +1025,167 @@ class ReportController extends Controller
         })->flatten(1)->values();
     }
 
+    // ── My Customers (Employee Portal) ──────────────────────
+
+    public function myCustomers(Request $request): Response
+    {
+        $user = $request->user();
+        $today = Carbon::today();
+        $search = $request->query('search');
+
+        // Distinct customer IDs from tasks where this user is responsible OR collaborator
+        $customerIds = Task::query()
+            ->whereNotNull('customer_id')
+            ->where(function ($q) use ($user) {
+                $q->where('responsible_id', $user->id)
+                    ->orWhereHas('collaborators', fn ($cq) => $cq->where('users.id', $user->id));
+            })
+            ->pluck('customer_id')
+            ->unique()
+            ->values();
+
+        $customers = Customer::with(['user'])
+            ->whereIn('id', $customerIds)
+            ->when($search, fn ($q) => $q->whereHas('user', fn ($u) => $u->where('name', 'like', "%{$search}%")->orWhere('email', 'like', "%{$search}%")))
+            ->get();
+
+        $rows = $customers->map(function (Customer $c) use ($user, $today) {
+            $myTasks = Task::where('customer_id', $c->id)
+                ->where(function ($q) use ($user) {
+                    $q->where('responsible_id', $user->id)
+                        ->orWhereHas('collaborators', fn ($cq) => $cq->where('users.id', $user->id));
+                });
+
+            $total = (clone $myTasks)->count();
+            $completed = (clone $myTasks)->where('status', 'completed')->count();
+            $pending = (clone $myTasks)->where('status', 'pending')->count();
+            $inProgress = (clone $myTasks)->where('status', 'in_progress')->count();
+            $overdue = (clone $myTasks)->where('status', '!=', 'completed')->where('due_date', '<', $today)->count();
+            $lastActivity = (clone $myTasks)->max('updated_at');
+
+            return [
+                'id' => $c->id,
+                'name' => $c->user?->name ?? '-',
+                'email' => $c->user?->email ?? '-',
+                'phone' => $c->phone ?? '-',
+                'emirate' => $c->emirate ?? '-',
+                'total_tasks' => $total,
+                'completed' => $completed,
+                'pending' => $pending,
+                'in_progress' => $inProgress,
+                'overdue' => $overdue,
+                'rate' => $total > 0 ? round(($completed / $total) * 100) : 0,
+                'last_activity' => $lastActivity ? Carbon::parse($lastActivity)->format('M d, Y') : null,
+            ];
+        })->sortByDesc('total_tasks')->values();
+
+        return Inertia::render('Admin/Reports/MyCustomers', [
+            'customers' => $rows,
+            'filters' => ['search' => $search],
+        ]);
+    }
+
+    // ── My Meetings (Employee Portal) ───────────────────────
+
+    public function myMeetings(Request $request): Response
+    {
+        $user = $request->user();
+        $month = $request->query('month', now()->format('Y-m'));
+        $search = $request->query('search');
+
+        $startOfMonth = Carbon::parse($month . '-01')->startOfMonth();
+        $endOfMonth = $startOfMonth->copy()->endOfMonth();
+
+        $events = CalendarEvent::with(['creator:id,name', 'participants:id,name'])
+            ->where('type', 'meeting')
+            ->whereBetween('date', [$startOfMonth, $endOfMonth])
+            ->where(function ($q) use ($user) {
+                $q->where('created_by', $user->id)
+                    ->orWhereHas('participants', fn ($p) => $p->where('users.id', $user->id));
+            })
+            ->when($search, fn ($q) => $q->where(function ($q) use ($search) {
+                $q->where('title', 'like', "%{$search}%")
+                    ->orWhere('location', 'like', "%{$search}%")
+                    ->orWhere('description', 'like', "%{$search}%");
+            }))
+            ->orderBy('date')
+            ->orderBy('start_time')
+            ->get();
+
+        $rows = $events->map(function (CalendarEvent $e) {
+            return [
+                'id' => $e->id,
+                'date' => $e->date->format('Y-m-d'),
+                'date_display' => $e->date->format('D, M d, Y'),
+                'title' => $e->title,
+                'meeting_type' => $e->meeting_type,
+                'location' => $e->location ?? '-',
+                'description' => $e->description ?? '-',
+                'timing' => $e->all_day
+                    ? 'All Day'
+                    : ($e->start_time && $e->end_time
+                        ? Carbon::parse($e->start_time)->format('h:i A') . ' - ' . Carbon::parse($e->end_time)->format('h:i A')
+                        : '-'),
+                'organizer' => $e->creator?->name ?? '-',
+                'participants' => $e->participants->pluck('name')->values(),
+            ];
+        });
+
+        return Inertia::render('Admin/Reports/MyMeetings', [
+            'meetings' => $rows,
+            'filters' => ['month' => $month, 'search' => $search],
+            'month_label' => $startOfMonth->format('F Y'),
+        ]);
+    }
+
+    // ── My Pending Tasks (Employee Portal) ──────────────────
+
+    public function myPendingTasks(Request $request): Response
+    {
+        $user = $request->user();
+        $today = Carbon::today();
+        $search = $request->query('search');
+        $priority = $request->query('priority');
+
+        $tasks = Task::query()
+            ->with(['service:id,name', 'customer.user:id,name'])
+            ->whereIn('status', ['pending', 'in_progress'])
+            ->where(function ($q) use ($user) {
+                $q->where('responsible_id', $user->id)
+                    ->orWhereHas('collaborators', fn ($cq) => $cq->where('users.id', $user->id));
+            })
+            ->when($priority, fn ($q) => $q->where('priority', $priority))
+            ->when($search, fn ($q) => $q->where(function ($q) use ($search) {
+                $q->where('instructions', 'like', "%{$search}%")
+                    ->orWhereHas('service', fn ($s) => $s->where('name', 'like', "%{$search}%"))
+                    ->orWhereHas('customer.user', fn ($u) => $u->where('name', 'like', "%{$search}%"));
+            }))
+            ->orderByRaw("FIELD(priority, 'urgent', 'high', 'medium', 'low')")
+            ->orderBy('due_date')
+            ->get();
+
+        $rows = $tasks->map(function (Task $t) use ($today) {
+            $dueDate = $t->due_date;
+            $daysRemaining = $dueDate ? (int) $today->diffInDays($dueDate, false) : null;
+
+            return [
+                'id' => $t->id,
+                'service_name' => $t->service?->name ?? '-',
+                'customer_name' => $t->customer?->user?->name ?? '-',
+                'priority' => $t->priority,
+                'status' => $t->status,
+                'due_date' => $dueDate?->format('M d, Y'),
+                'days_remaining' => $daysRemaining,
+                'is_overdue' => $dueDate ? $dueDate->lt($today) : false,
+            ];
+        });
+
+        return Inertia::render('Admin/Reports/MyPendingTasks', [
+            'tasks' => $rows,
+            'filters' => ['search' => $search, 'priority' => $priority],
+        ]);
+    }
+
     // ── Helpers ─────────────────────────────────────────────
 
     private function getDateFrom(string $period): ?Carbon
