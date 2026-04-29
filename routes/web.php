@@ -55,7 +55,7 @@ Route::middleware(['auth', 'verified', 'role:admin'])->prefix('admin')->name('ad
 // Report routes (accessible by admin, managers, and employees with report permissions)
 Route::middleware(['auth', 'verified'])->prefix('admin/reports')->name('admin.reports.')->group(function () {
     Route::get('dashboard', [ReportController::class, 'dashboard'])
-        ->middleware('permission:view customer reports|view partner reports|view employee reports')
+        ->middleware('permission:view customer reports|view partner reports|view employee reports|view service reports')
         ->name('dashboard');
 
     Route::middleware('permission:view customer reports')->group(function () {
@@ -69,6 +69,11 @@ Route::middleware(['auth', 'verified'])->prefix('admin/reports')->name('admin.re
         Route::get('partners', [ReportController::class, 'partners'])->name('partners');
         Route::get('partners/pdf', [ReportController::class, 'partnersPdf'])->name('partners.pdf');
         Route::get('partners/excel', [ReportController::class, 'partnersExcel'])->name('partners.excel');
+    });
+
+    Route::middleware('permission:view service reports')->group(function () {
+        Route::get('services', [ReportController::class, 'services'])->name('services');
+        Route::get('services/{service}', [ReportController::class, 'serviceShow'])->name('services.show');
     });
 
     Route::middleware('permission:view employee reports')->group(function () {

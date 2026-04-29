@@ -176,6 +176,148 @@ class ReportController extends Controller
         ]);
     }
 
+    // ── Services ───────────────────────────────────────────
+
+    public function services(Request $request): Response
+    {
+        $search = $request->query('search');
+
+        $services = Service::query()
+            ->when($search, fn ($q) => $q->where('name', 'like', "%{$search}%"))
+            ->orderBy('name')
+            ->get();
+
+        $rows = $services->map(function (Service $s) {
+            $totalTasks = Task::where('service_id', $s->id)->count();
+            $runningTasks = Task::where('service_id', $s->id)->whereIn('status', ['pending', 'in_progress'])->count();
+            $completedTasks = Task::where('service_id', $s->id)->where('status', 'completed')->count();
+            $customerCount = Task::where('service_id', $s->id)->distinct('customer_id')->count('customer_id');
+
+            return [
+                'id' => $s->id,
+                'name' => $s->name,
+                'description' => $s->description,
+                'is_active' => $s->is_active,
+                'total_tasks' => $totalTasks,
+                'running_tasks' => $runningTasks,
+                'completed_tasks' => $completedTasks,
+                'customer_count' => $customerCount,
+                'rate' => $totalTasks > 0 ? round(($completedTasks / $totalTasks) * 100) : 0,
+            ];
+        })->values();
+
+        return Inertia::render('Admin/Reports/Services', [
+            'services' => $rows,
+            'filters' => ['search' => $search],
+        ]);
+    }
+
+    public function serviceShow(Service $service): Response
+    {
+        $today = Carbon::today();
+
+        $tasks = Task::where('service_id', $service->id)
+            ->with([
+                'customer.user:id,name',
+                'responsible:id,name',
+                'responsible.roles',
+                'collaborators:id,name',
+                'collaborators.roles',
+            ])
+            ->get();
+
+        // Group tasks by customer — each group is a "project" for this service
+        $projects = $tasks->groupBy('customer_id')->map(function ($customerTasks, $customerId) use ($today) {
+            $first = $customerTasks->first();
+            $customerName = $first->customer?->user?->name ?? '-';
+
+            $startDate = $customerTasks->min('created_at');
+            $endDate = $customerTasks->max('due_date');
+            $days = ($startDate && $endDate) ? Carbon::parse($startDate)->startOfDay()->diffInDays(Carbon::parse($endDate)->startOfDay()) : null;
+
+            $total = $customerTasks->count();
+            $completed = $customerTasks->where('status', 'completed')->count();
+            $pending = $customerTasks->where('status', 'pending')->count();
+            $inProgress = $customerTasks->where('status', 'in_progress')->count();
+            $overdue = $customerTasks->filter(fn ($t) => $t->status !== 'completed' && $t->due_date && $t->due_date->lt($today))->count();
+            $hasRunning = $pending + $inProgress > 0;
+
+            // Collect all assignees (responsible + collaborators) across this customer's tasks
+            $assignees = collect();
+            foreach ($customerTasks as $t) {
+                if ($t->responsible) {
+                    $assignees->push($t->responsible);
+                }
+                foreach ($t->collaborators as $c) {
+                    $assignees->push($c);
+                }
+            }
+            $assignees = $assignees->unique('id');
+
+            $employees = $assignees->filter(fn ($u) => $u->hasRole('employee'))
+                ->map(fn ($u) => ['id' => $u->id, 'name' => $u->name])
+                ->values();
+            $managers = $assignees->filter(fn ($u) => $u->hasRole('manager'))
+                ->map(fn ($u) => ['id' => $u->id, 'name' => $u->name])
+                ->values();
+
+            $assignmentStatus = ($employees->isEmpty() && $managers->isEmpty())
+                ? 'To be Assigned'
+                : 'Assigned';
+
+            return [
+                'customer_id' => $customerId,
+                'customer_name' => $customerName,
+                'start_date' => $startDate ? Carbon::parse($startDate)->format('M d, Y') : null,
+                'end_date' => $endDate ? Carbon::parse($endDate)->format('M d, Y') : null,
+                'days' => $days,
+                'total_tasks' => $total,
+                'completed' => $completed,
+                'pending' => $pending,
+                'in_progress' => $inProgress,
+                'overdue' => $overdue,
+                'rate' => $total > 0 ? round(($completed / $total) * 100) : 0,
+                'is_running' => $hasRunning,
+                'employees' => $employees,
+                'managers' => $managers,
+                'assignment_status' => $assignmentStatus,
+            ];
+        })->sortByDesc('is_running')->values();
+
+        $runningProjects = $projects->where('is_running', true)->values();
+        $allProjects = $projects;
+
+        // KPIs
+        $totalTasks = $tasks->count();
+        $completedTasks = $tasks->where('status', 'completed')->count();
+        $runningTasks = $tasks->whereIn('status', ['pending', 'in_progress'])->count();
+        $overdueTasks = $tasks->filter(fn ($t) => $t->status !== 'completed' && $t->due_date && $t->due_date->lt($today))->count();
+
+        // If there are no projects/tasks at all, mark service as Proposed
+        $serviceStatus = $tasks->isEmpty() ? 'Proposed' : ($service->is_active ? 'Active' : 'Inactive');
+
+        return Inertia::render('Admin/Reports/ServiceShow', [
+            'service' => [
+                'id' => $service->id,
+                'name' => $service->name,
+                'description' => $service->description,
+                'is_active' => $service->is_active,
+                'status' => $serviceStatus,
+            ],
+            'kpis' => [
+                'total_tasks' => $totalTasks,
+                'completed_tasks' => $completedTasks,
+                'running_tasks' => $runningTasks,
+                'overdue_tasks' => $overdueTasks,
+                'rate' => $totalTasks > 0 ? round(($completedTasks / $totalTasks) * 100) : 0,
+                'project_count' => $allProjects->count(),
+                'running_project_count' => $runningProjects->count(),
+            ],
+            'running_projects' => $runningProjects,
+            'all_projects' => $allProjects,
+        ]);
+    }
+
     // ── Customers ──────────────────────────────────────────
 
     public function customers(Request $request): Response

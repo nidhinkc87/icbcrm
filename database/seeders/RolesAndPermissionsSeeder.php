@@ -35,6 +35,7 @@ class RolesAndPermissionsSeeder extends Seeder
             'view customer reports',
             'view partner reports',
             'view employee reports',
+            'view service reports',
         ];
 
         foreach ($permissions as $permission) {
@@ -59,6 +60,7 @@ class RolesAndPermissionsSeeder extends Seeder
             'view customer reports',
             'view partner reports',
             'view employee reports',
+            'view service reports',
         ]);
 
         $employeeRole = Role::firstOrCreate(['name' => 'employee']);
